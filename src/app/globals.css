@@ -1,0 +1,159 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #1e293b;
+  --panel-bg: rgba(255, 255, 255, 0.94);
+  --panel-border: rgba(226, 232, 240, 0.85);
+  --accent-blue: #006EFF;
+}
+
+.dark {
+  --background: #12121e;
+  --foreground: #f8fafc;
+  --panel-bg: rgba(30, 30, 45, 0.93);
+  --panel-border: rgba(51, 65, 85, 0.65);
+  --accent-blue: #3b82f6;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-jakarta), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Custom smooth scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+/* Glassmorphism panel styling */
+.glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--panel-border);
+}
+
+/* Radar pulse animation */
+@keyframes radar-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(0, 110, 255, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 12px rgba(0, 110, 255, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(0, 110, 255, 0);
+  }
+}
+
+.animate-radar-pulse {
+  animation: radar-pulse 2s infinite ease-in-out;
+}
+
+@keyframes ping-slow {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  80%, 100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.animate-ping-slow {
+  animation: ping-slow 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Custom Leaflet Styling */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #0f172a;
+  outline: none;
+  font-family: inherit !important;
+}
+
+/* Clean up leaflet default controls */
+.leaflet-top, .leaflet-bottom {
+  z-index: 500 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--panel-bg) !important;
+  color: var(--foreground) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid var(--panel-border) !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  line-height: 1.4 !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--panel-bg) !important;
+}
+
+.leaflet-tooltip {
+  background: rgba(15, 23, 42, 0.85) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Custom marker animation */
+.marker-pin-pulse {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Free OpenStreetMap Dark Mode Filter (Zero API Key Required) */
+.dark-tiles .leaflet-tile-pane {
+  filter: brightness(0.65) invert(1) contrast(2.8) hue-rotate(200deg) saturate(0.25) brightness(0.72);
+}
+
+/* Smooth Canvas Heatmap Layer Styling */
+.leaflet-heatmap-layer {
+  pointer-events: none;
+  mix-blend-mode: screen;
+  transition: opacity 0.3s ease;
+}
+
+html:not(.dark) .leaflet-heatmap-layer {
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+}
+
