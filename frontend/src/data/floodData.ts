@@ -705,8 +705,8 @@ export function getAnalysisForGrid(gridId: string): AreaAnalysisResponse {
     commuter_advisory: isNoRisk
       ? 'Kondisi perjalanan aman dan lancar di seluruh ruas jalan.'
       : p.risk_level === 'Extreme' || p.risk_level === 'High'
-      ? 'Hindari bepergian dengan menggunakan kendaraan roda dua, hindari pohon rawan tumbang, dan gunakan jalan layang / rute alternatif.'
-      : 'Kondisi perjalanan relatif aman. Selalu siapkan jas hujan dan pantau pergerakan radar.',
+        ? 'Hindari bepergian dengan menggunakan kendaraan roda dua, hindari pohon rawan tumbang, dan gunakan jalan layang / rute alternatif.'
+        : 'Kondisi perjalanan relatif aman. Selalu siapkan jas hujan dan pantau pergerakan radar.',
     confidence_badge: isNoRisk ? 'Data Terverifikasi (Aman)' : p.confidence_badge,
     confidence_score: p.confidence_score,
     rainfall_mm: isNoRisk ? 0 : p.rainfall_mm,

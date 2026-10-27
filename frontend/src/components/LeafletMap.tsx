@@ -103,6 +103,22 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   const radarCircleLayerRef = useRef<L.LayerGroup | null>(null);
   const selectedLocationLayerRef = useRef<L.LayerGroup | null>(null);
 
+  // Zoom-aware radius: grows gently with zoom to prevent fragmentation when zooming in,
+  // but is capped so it never floods the entire screen with a single color.
+  //   zoom 9  → ~14px radius
+  //   zoom 11 → ~28px radius  (reference / default view)
+  //   zoom 13 → ~55px radius
+  //   zoom 15 → ~75px radius  (hard cap)
+  const BASE_RADIUS = 28;
+  const BASE_BLUR = 20;
+  const REFERENCE_ZOOM = 11;
+  const MAX_RADIUS = 75;
+  const MAX_BLUR = 50;
+  const getZoomRadius = (zoom: number) =>
+    Math.round(Math.min(MAX_RADIUS, Math.max(8, BASE_RADIUS * Math.pow(1.4, zoom - REFERENCE_ZOOM))));
+  const getZoomBlur = (zoom: number) =>
+    Math.round(Math.min(MAX_BLUR, Math.max(5, BASE_BLUR * Math.pow(1.4, zoom - REFERENCE_ZOOM))));
+
   useEffect(() => {
     featuresRef.current = features;
   }, [features]);
@@ -281,26 +297,49 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       ? rawPoints.filter((p) => p[2] * 35 >= activeRainThreshold)
       : rawPoints;
 
+    const zoom = map.getZoom();
+    const currentRadius = getZoomRadius(zoom);
+    const currentBlur = getZoomBlur(zoom);
+
+    const heatOptions = {
+      radius: currentRadius,
+      blur: currentBlur,
+      minOpacity: 0.18,
+      max: 1.0,
+      gradient: {
+        0.35: '#22C55E',
+        0.55: '#EAB308',
+        0.75: '#FACC15',
+        0.9: '#EF4444',
+        1.0: '#B91C1C',
+      },
+    };
+
     if (heatLayerRef.current && map.hasLayer(heatLayerRef.current)) {
       heatLayerRef.current.setLatLngs(filteredPoints);
+      heatLayerRef.current.setOptions(heatOptions);
     } else {
       heatLayerRef.current = null;
-      heatLayerRef.current = L.heatLayer(filteredPoints, {
-        radius: 25,
-        blur: 15,
-        minOpacity: 0.18,
-        max: 1.0,
-        gradient: {
-          0.35: '#22C55E',
-          0.55: '#EAB308',
-          0.75: '#FACC15',
-          0.9: '#EF4444',
-          1.0: '#B91C1C',
-        },
-      }).addTo(map);
+      heatLayerRef.current = L.heatLayer(filteredPoints, heatOptions).addTo(map);
     }
 
     jakartaBoundaryLayerRef.current?.bringToFront();
+
+    // Keep radius in sync with zoom so heatmap stays geographically consistent.
+    const onZoomEnd = () => {
+      if (!heatLayerRef.current || !map.hasLayer(heatLayerRef.current)) return;
+      const z = map.getZoom();
+      heatLayerRef.current.setOptions({
+        radius: getZoomRadius(z),
+        blur: getZoomBlur(z),
+      });
+      jakartaBoundaryLayerRef.current?.bringToFront();
+    };
+
+    map.on('zoomend', onZoomEnd);
+    return () => {
+      map.off('zoomend', onZoomEnd);
+    };
   }, [timeHorizon, layers.heatmap, activeRainThreshold]);
 
   // 4. River Water Gate Stations (Pintu Air / Stream Gauges)
@@ -319,11 +358,10 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         className: 'custom-station-icon',
         html: `
           <div style="position: relative; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
-            ${
-              isSiaga
-                ? `<span style="position: absolute; width: 28px; height: 28px; border-radius: 50%; background-color: ${markerColor}; opacity: 0.4; animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>`
-                : ''
-            }
+            ${isSiaga
+            ? `<span style="position: absolute; width: 28px; height: 28px; border-radius: 50%; background-color: ${markerColor}; opacity: 0.4; animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>`
+            : ''
+          }
             <div style="width: 22px; height: 22px; border-radius: 50%; background: #1E293B; border: 2.5px solid ${markerColor}; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${markerColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
