@@ -12,6 +12,7 @@ import {
 import { getStyleForGrid } from '@/utils/colorScale';
 import { createHeatLayer, CanvasHeatLayer } from '@/utils/canvasHeatLayer';
 import { getDenseHeatPoints } from '@/data/floodData';
+import { JAKARTA_ADMIN_BOUNDARY } from '@/data/jakartaBoundary';
 
 interface LeafletMapProps {
   features: GeoJSONGridFeature[];
@@ -48,6 +49,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const canvasHeatLayerRef = useRef<CanvasHeatLayer | null>(null);
   const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
+  const jakartaBoundaryLayerRef = useRef<L.GeoJSON | null>(null);
   const waterGatesLayerRef = useRef<L.LayerGroup | null>(null);
   const evacLayerRef = useRef<L.LayerGroup | null>(null);
   const radarCircleLayerRef = useRef<L.LayerGroup | null>(null);
@@ -72,6 +74,14 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     waterGatesLayerRef.current = L.layerGroup().addTo(map);
     evacLayerRef.current = L.layerGroup().addTo(map);
     radarCircleLayerRef.current = L.layerGroup().addTo(map);
+    jakartaBoundaryLayerRef.current = L.geoJSON(JAKARTA_ADMIN_BOUNDARY as GeoJSON.GeoJsonObject, {
+      style: {
+        color: 'red',
+        weight: 2,
+        fill: false,
+        fillOpacity: 0,
+      },
+    }).addTo(map);
 
     // Custom window events for decoupled map controls
     const handleZoomIn = () => map.zoomIn();
@@ -88,6 +98,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       window.removeEventListener('pawang:reset', handleReset);
       map.remove();
       mapInstanceRef.current = null;
+      jakartaBoundaryLayerRef.current = null;
     };
   }, []);
 

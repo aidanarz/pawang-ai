@@ -59,7 +59,9 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   const filteredLocations = BASE_FLOOD_ZONES.filter((zone) =>
     zone.properties.area_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     zone.properties.district.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    zone.properties.city.toLowerCase().includes(searchQuery.toLowerCase())
+    zone.properties.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `kecamatan ${zone.properties.district}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    zone.properties.grid_id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const riskClasses = analysis
@@ -69,6 +71,9 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   const siagaClasses = analysis
     ? getSiagaBadgeClasses(analysis.siaga_level)
     : getSiagaBadgeClasses('Normal');
+  const isNoRisk = Boolean(
+    analysis && analysis.risk_level === 'Low' && analysis.rainfall_mm === 0
+  );
 
   return (
     <>
@@ -259,7 +264,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               </div>
 
               {/* SECTION 1: Overview Analisa Card */}
-              <div className="glass-panel rounded-xl p-3 bg-slate-900/5 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/80 space-y-3">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                     <AlertTriangle size={14} className="text-amber-500" />
@@ -272,8 +277,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 </div>
 
                 {/* High-level AI Summary Text */}
-                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium bg-white/50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-200/50 dark:border-slate-700/60">
-                  {analysis.risk_level === 'Extreme'
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium p-2.5 border-y border-gray-200 dark:border-gray-700/50">
+                  {isNoRisk
+                    ? 'Kondisi wilayah terpantau aman. Tidak terdapat probabilitas presipitasi maupun indikasi genangan air pada area ini untuk rentang waktu perkiraan.'
+                    : analysis.risk_level === 'Extreme'
                     ? `⚠️ PERINGATAN KRITIS: Adanya kemungkinan banjir parah pada daerah ini pada ${timeHorizon} berikutnya akibat limpasan air kiriman dan intensitas hujan tinggi.`
                     : analysis.risk_level === 'High'
                     ? `⚠️ Adanya kemungkinan banjir sedang hingga tinggi pada daerah ini pada ${timeHorizon} berikutnya dengan estimasi genangan ${analysis.inundation_range}.`
@@ -283,15 +290,15 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 </p>
 
                 {/* Hydrologic Metrics Grid */}
-                <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-2 gap-0 text-xs border-y border-gray-200 dark:border-gray-700/50">
                   {/* Metric: Rainfall */}
-                  <div className="p-2.5 rounded-lg bg-white/40 dark:bg-slate-800/40 border border-slate-200/40 dark:border-slate-700/40">
+                  <div className="p-2.5 border-r border-b border-gray-200 dark:border-gray-700/50">
                     <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[10px]">
                       <Droplets size={12} className="text-blue-500" />
                       <span>Curah Hujan</span>
                     </div>
                     <div className="text-sm font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-baseline gap-1">
-                      <span>{analysis.rainfall_mm}</span>
+                      <span>{isNoRisk ? 0 : analysis.rainfall_mm}</span>
                       <span className="text-[10px] font-normal text-slate-400">mm/jam</span>
                     </div>
                     <div
@@ -304,12 +311,14 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                         ? 'Hujan Lebat'
                         : analysis.rainfall_mm > 5
                         ? 'Hujan Sedang'
+                        : isNoRisk
+                        ? 'Normal'
                         : 'Hujan Ringan'}
                     </div>
                   </div>
 
                   {/* Metric: Water Level (TMA) */}
-                  <div className="p-2.5 rounded-lg bg-white/40 dark:bg-slate-800/40 border border-slate-200/40 dark:border-slate-700/40">
+                  <div className="p-2.5 border-b border-gray-200 dark:border-gray-700/50">
                     <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[10px]">
                       <Clock size={12} className="text-indigo-500" />
                       <span>Status Muka Air</span>
@@ -321,12 +330,12 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                     <span
                       className={`inline-block px-1.5 py-0.2 rounded text-[9.5px] font-bold mt-0.5 border ${siagaClasses.bg} ${siagaClasses.text} ${siagaClasses.border}`}
                     >
-                      {analysis.siaga_level}
+                      {isNoRisk ? 'Aman' : analysis.siaga_level}
                     </span>
                   </div>
 
                   {/* Metric: Peak Time */}
-                  <div className="p-2.5 rounded-lg bg-white/40 dark:bg-slate-800/40 border border-slate-200/40 dark:border-slate-700/40">
+                  <div className="p-2.5 border-r border-gray-200 dark:border-gray-700/50">
                     <div className="text-slate-500 dark:text-slate-400 text-[10px]">
                       Estimasi Puncak
                     </div>
@@ -339,12 +348,12 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   </div>
 
                   {/* Metric: Inundation Range */}
-                  <div className="p-2.5 rounded-lg bg-white/40 dark:bg-slate-800/40 border border-slate-200/40 dark:border-slate-700/40">
+                  <div className="p-2.5">
                     <div className="text-slate-500 dark:text-slate-400 text-[10px]">
                       Tinggi Genangan
                     </div>
                     <div className="text-xs font-bold text-slate-800 dark:text-slate-100 mt-1 text-rose-600 dark:text-rose-400">
-                      {analysis.inundation_range}
+                      {isNoRisk ? '0 cm' : analysis.inundation_range}
                     </div>
                     <div className="text-[9.5px] text-slate-400 mt-0.5">
                       Kedalaman Rata-rata

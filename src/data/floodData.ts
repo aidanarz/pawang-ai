@@ -148,23 +148,13 @@ export const EVACUATION_CENTERS: EvacuationCenter[] = [
   },
   {
     id: 'EVAC-PLT',
-    name: 'Posko Siaga Rob Pluit Kencana',
-    capacity: 600,
-    occupancy: 110,
-    contact: '0811-7788-9900 (Tagana Jakut)',
-    address: 'Jl. Pluit Kencana Raya No. 4, Penjaringan',
-    lat: -6.1215,
-    lng: 106.7932,
-  },
-  {
-    id: 'EVAC-RWJ',
-    name: 'Pusdiklat Ditjen Pajak Rawajati',
+    name: 'Kantor Kelurahan Pluit',
     capacity: 350,
     occupancy: 42,
-    contact: '0815-4433-2211 (Relawan Ciliwung)',
-    address: 'Jl. Bina Warga No. 1, Rawajati, Pancoran',
-    lat: -6.2588,
-    lng: 106.8552,
+    contact: '021-6691122 (Posko Siaga Rob)',
+    address: 'Jl. Pluit Permai No. 1, Penjaringan',
+    lat: -6.1190,
+    lng: 106.7930,
   },
 ];
 
@@ -180,7 +170,6 @@ function createOrganicPolygon(
   const totalVertices = 24;
   for (let i = 0; i <= totalVertices; i++) {
     const angle = (i / totalVertices) * 2 * Math.PI;
-    // Harmonic wave perturbation for natural hydrologic basin shape
     const distortion =
       1.0 +
       0.22 * Math.sin(angle * 3 + seed) +
@@ -193,7 +182,48 @@ function createOrganicPolygon(
   return [ring];
 }
 
+// Helper to create standard no-risk subdistrict feature
+function createNoRiskKecamatan(
+  gridId: string,
+  districtName: string,
+  city: string,
+  lat: number,
+  lng: number,
+  seed: number
+): GeoJSONGridFeature {
+  return {
+    type: 'Feature',
+    properties: {
+      grid_id: gridId,
+      area_name: `Kecamatan ${districtName}`,
+      district: districtName,
+      city: city,
+      risk_level: 'Low',
+      flood_probability: 0.0,
+      rainfall_mm: 0.0,
+      water_level_cm: 55,
+      siaga_level: 'Normal',
+      duration_est: 'Kondisi terpantau aman dan stabil',
+      peak_time: 'Nihil',
+      inundation_range: '0 cm',
+      confidence_score: 98.5,
+      confidence_badge: 'Aman / Data Terverifikasi',
+      recommendation: 'Aktivitas normal di seluruh area. Drainase kota berfungsi optimal.',
+      evacuation_route: 'Seluruh akses jalan utama beroperasi normal dan lancar.',
+      affected_roads: [],
+    },
+    geometry: {
+      type: 'Polygon',
+      coordinates: createOrganicPolygon(lat, lng, 0.014, 0.016, seed),
+    },
+  };
+}
+
+/**
+ * Complete list of flood monitoring zones and ALL 44 sub-districts (Kecamatan) across DKI Jakarta
+ */
 export const BASE_FLOOD_ZONES: GeoJSONGridFeature[] = [
+  // --- A. ACTIVE FLOOD HOTSPOTS & CRITICAL RIVER BASINS ---
   {
     type: 'Feature',
     properties: {
@@ -488,38 +518,98 @@ export const BASE_FLOOD_ZONES: GeoJSONGridFeature[] = [
       district: 'Taman Sari',
       city: 'Jakarta Barat',
       risk_level: 'Low',
-      flood_probability: 0.28,
-      rainfall_mm: 2.5,
+      flood_probability: 0.0,
+      rainfall_mm: 0.0,
       water_level_cm: 20,
       siaga_level: 'Normal',
       duration_est: 'Kondisi relatif stabil pada 5 jam ke depan',
-      peak_time: '14:00 WIB',
-      inundation_range: '0 - 15 cm',
+      peak_time: 'Nihil',
+      inundation_range: '0 cm',
       confidence_score: 88.5,
-      confidence_badge: 'High Data Confidence',
-      recommendation: 'Kondisi saluran dan drainase utama lancar. Potensi genangan air dangkal di bahu jalan saat hujan lebat tiba.',
+      confidence_badge: 'Data Terverifikasi',
+      recommendation: 'Kondisi saluran dan drainase utama lancar.',
       evacuation_route: 'Aktivitas normal. Akses lancar via Jl. Gajah Mada dan Hayam Wuruk.',
-      affected_roads: ['Jl. Pinangsia Timur (Genangan minor)', 'Jl. Mangga Besar IX'],
+      affected_roads: [],
     },
     geometry: {
       type: 'Polygon',
       coordinates: createOrganicPolygon(-6.1450, 106.8150, 0.016, 0.018, 12.1),
     },
   },
+
+  // --- B. ALL 44 SUB-DISTRICTS (KECAMATAN) OF DKI JAKARTA ---
+  // 1. JAKARTA PUSAT (8 Kecamatan)
+  createNoRiskKecamatan('KEC-JKT-PST-GMB', 'Gambir', 'Jakarta Pusat', -6.1754, 106.8272, 13.1),
+  createNoRiskKecamatan('KEC-JKT-PST-TNA', 'Tanah Abang', 'Jakarta Pusat', -6.1950, 106.8140, 13.2),
+  createNoRiskKecamatan('KEC-JKT-PST-MTG', 'Menteng', 'Jakarta Pusat', -6.1963, 106.8322, 13.3),
+  createNoRiskKecamatan('KEC-JKT-PST-SNN', 'Senen', 'Jakarta Pusat', -6.1880, 106.8450, 13.4),
+  createNoRiskKecamatan('KEC-JKT-PST-CPK', 'Cempaka Putih', 'Jakarta Pusat', -6.1820, 106.8710, 13.5),
+  createNoRiskKecamatan('KEC-JKT-PST-JHB', 'Johar Baru', 'Jakarta Pusat', -6.1870, 106.8580, 13.6),
+  createNoRiskKecamatan('KEC-JKT-PST-KMY', 'Kemayoran', 'Jakarta Pusat', -6.1580, 106.8570, 13.7),
+  createNoRiskKecamatan('KEC-JKT-PST-SWB', 'Sawah Besar', 'Jakarta Pusat', -6.1550, 106.8310, 13.8),
+
+  // 2. JAKARTA UTARA (6 Kecamatan)
+  createNoRiskKecamatan('KEC-JKT-UTR-PJR', 'Penjaringan', 'Jakarta Utara', -6.1280, 106.7850, 14.1),
+  createNoRiskKecamatan('KEC-JKT-UTR-TJP', 'Tanjung Priok', 'Jakarta Utara', -6.1330, 106.8830, 14.2),
+  createNoRiskKecamatan('KEC-JKT-UTR-KOJ', 'Koja', 'Jakarta Utara', -6.1270, 106.9070, 14.3),
+  createNoRiskKecamatan('KEC-JKT-UTR-CLN', 'Cilincing', 'Jakarta Utara', -6.1250, 106.9450, 14.4),
+  createNoRiskKecamatan('KEC-JKT-UTR-PDM', 'Pademangan', 'Jakarta Utara', -6.1350, 106.8400, 14.5),
+  createNoRiskKecamatan('KEC-JKT-UTR-KLG', 'Kelapa Gading', 'Jakarta Utara', -6.1620, 106.9050, 14.6),
+
+  // 3. JAKARTA BARAT (8 Kecamatan)
+  createNoRiskKecamatan('KEC-JKT-BRT-CKG', 'Cengkareng', 'Jakarta Barat', -6.1480, 106.7400, 15.1),
+  createNoRiskKecamatan('KEC-JKT-BRT-GPR', 'Grogol Petamburan', 'Jakarta Barat', -6.1670, 106.7880, 15.2),
+  createNoRiskKecamatan('KEC-JKT-BRT-KLD', 'Kalideres', 'Jakarta Barat', -6.1520, 106.7030, 15.3),
+  createNoRiskKecamatan('KEC-JKT-BRT-KBJ', 'Kebon Jeruk', 'Jakarta Barat', -6.1920, 106.7680, 15.4),
+  createNoRiskKecamatan('KEC-JKT-BRT-KMB', 'Kembangan', 'Jakarta Barat', -6.1850, 106.7380, 15.5),
+  createNoRiskKecamatan('KEC-JKT-BRT-PLM', 'Palmerah', 'Jakarta Barat', -6.1950, 106.7920, 15.6),
+  createNoRiskKecamatan('KEC-JKT-BRT-TMS', 'Taman Sari', 'Jakarta Barat', -6.1480, 106.8180, 15.7),
+  createNoRiskKecamatan('KEC-JKT-BRT-TMB', 'Tambora', 'Jakarta Barat', -6.1480, 106.8050, 15.8),
+
+  // 4. JAKARTA SELATAN (10 Kecamatan)
+  createNoRiskKecamatan('KEC-JKT-SLT-CLD', 'Cilandak', 'Jakarta Selatan', -6.2920, 106.7990, 16.1),
+  createNoRiskKecamatan('KEC-JKT-SLT-JGK', 'Jagakarsa', 'Jakarta Selatan', -6.3360, 106.8230, 16.2),
+  createNoRiskKecamatan('KEC-JKT-SLT-KBB', 'Kebayoran Baru', 'Jakarta Selatan', -6.2440, 106.8000, 16.3),
+  createNoRiskKecamatan('KEC-JKT-SLT-KBL', 'Kebayoran Lama', 'Jakarta Selatan', -6.2480, 106.7780, 16.4),
+  createNoRiskKecamatan('KEC-JKT-SLT-MPP', 'Mampang Prapatan', 'Jakarta Selatan', -6.2520, 106.8280, 16.5),
+  createNoRiskKecamatan('KEC-JKT-SLT-PCR', 'Pancoran', 'Jakarta Selatan', -6.2500, 106.8450, 16.6),
+  createNoRiskKecamatan('KEC-JKT-SLT-PSM', 'Pasar Minggu', 'Jakarta Selatan', -6.2870, 106.8410, 16.7),
+  createNoRiskKecamatan('KEC-JKT-SLT-PSG', 'Pesanggrahan', 'Jakarta Selatan', -6.2530, 106.7610, 16.8),
+  createNoRiskKecamatan('KEC-JKT-SLT-STB', 'Setiabudi', 'Jakarta Selatan', -6.2150, 106.8290, 16.9),
+  createNoRiskKecamatan('KEC-JKT-SLT-TBT', 'Tebet', 'Jakarta Selatan', -6.2320, 106.8520, 16.10),
+
+  // 5. JAKARTA TIMUR (10 Kecamatan)
+  createNoRiskKecamatan('KEC-JKT-TMR-CKG', 'Cakung', 'Jakarta Timur', -6.1950, 106.9450, 17.1),
+  createNoRiskKecamatan('KEC-JKT-TMR-CPY', 'Cipayung', 'Jakarta Timur', -6.3150, 106.9050, 17.2),
+  createNoRiskKecamatan('KEC-JKT-TMR-CRC', 'Ciracas', 'Jakarta Timur', -6.3300, 106.8750, 17.3),
+  createNoRiskKecamatan('KEC-JKT-TMR-DRS', 'Duren Sawit', 'Jakarta Timur', -6.2350, 106.9150, 17.4),
+  createNoRiskKecamatan('KEC-JKT-TMR-JTN', 'Jatinegara', 'Jakarta Timur', -6.2350, 106.8720, 17.5),
+  createNoRiskKecamatan('KEC-JKT-TMR-KMJ', 'Kramat Jati', 'Jakarta Timur', -6.2750, 106.8700, 17.6),
+  createNoRiskKecamatan('KEC-JKT-TMR-MKS', 'Makasar', 'Jakarta Timur', -6.2780, 106.8850, 17.7),
+  createNoRiskKecamatan('KEC-JKT-TMR-MTR', 'Matraman', 'Jakarta Timur', -6.2020, 106.8600, 17.8),
+  createNoRiskKecamatan('KEC-JKT-TMR-PSR', 'Pasar Rebo', 'Jakarta Timur', -6.3150, 106.8600, 17.9),
+  createNoRiskKecamatan('KEC-JKT-TMR-PLG', 'Pulo Gadung', 'Jakarta Timur', -6.1950, 106.8900, 17.10),
+
+  // 6. KEPULAUAN SERIBU (2 Kecamatan)
+  createNoRiskKecamatan('KEC-JKT-KPS-KSS', 'Kepulauan Seribu Selatan', 'Kab. Kepulauan Seribu', -5.9200, 106.6500, 18.1),
+  createNoRiskKecamatan('KEC-JKT-KPS-KSU', 'Kepulauan Seribu Utara', 'Kab. Kepulauan Seribu', -5.6000, 106.5600, 18.2),
 ];
 
 // Generate dynamic hydrograph for an area based on base water level and rainfall
 export function generateHydrograph(baseLevel: number, baseRain: number) {
   const points = [];
   const hours = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
-  const factors = [0.65, 0.85, 1.15, 1.45, 1.25, 0.95, 0.75, 0.60];
+  const isZero = baseRain === 0;
+  const factors = isZero
+    ? [1.0, 1.0, 1.01, 1.02, 1.01, 1.0, 0.99, 0.99]
+    : [0.65, 0.85, 1.15, 1.45, 1.25, 0.95, 0.75, 0.60];
 
   for (let i = 0; i < hours.length; i++) {
     points.push({
       time: hours[i],
-      rainfall: Math.round(baseRain * factors[i] * 10) / 10,
+      rainfall: isZero ? 0 : Math.round(baseRain * factors[i] * 10) / 10,
       waterLevel: Math.round(baseLevel * factors[i]),
-      threshold: Math.round(baseLevel * 1.1),
+      threshold: Math.max(120, Math.round(baseLevel * 1.25)),
     });
   }
   return points;
@@ -557,12 +647,29 @@ export function adjustFeaturesForTimeHorizon(
   }
 
   return features.map((f) => {
+    // If the area is safe (zero rain/prob), preserve the zero/safe baseline across all horizons
+    if (f.properties.rainfall_mm === 0 && f.properties.flood_probability === 0) {
+      return {
+        ...f,
+        properties: {
+          ...f.properties,
+          rainfall_mm: 0,
+          flood_probability: 0,
+          risk_level: 'Low' as RiskLevel,
+          duration_est: `Kondisi aman pada ${horizon} ke depan`,
+        },
+      };
+    }
+
     const adjustedRain = Math.round(f.properties.rainfall_mm * rainMultiplier * 10) / 10;
-    const adjustedProb = Math.min(0.98, Math.max(0.1, Math.round(f.properties.flood_probability * probMultiplier * 100) / 100));
+    const adjustedProb = Math.min(
+      0.98,
+      Math.max(0.05, Math.round(f.properties.flood_probability * probMultiplier * 100) / 100)
+    );
 
     let riskLevel: RiskLevel = 'Low';
     if (adjustedRain >= 25 || adjustedProb >= 0.85) riskLevel = 'Extreme';
-    else if (adjustedRain >= 15 || adjustedProb >= 0.70) riskLevel = 'High';
+    else if (adjustedRain >= 15 || adjustedProb >= 0.7) riskLevel = 'High';
     else if (adjustedRain >= 5 || adjustedProb >= 0.45) riskLevel = 'Medium';
 
     return {
@@ -580,30 +687,38 @@ export function adjustFeaturesForTimeHorizon(
 
 // Find analysis details for a grid ID
 export function getAnalysisForGrid(gridId: string): AreaAnalysisResponse {
-  const feature = BASE_FLOOD_ZONES.find((f) => f.properties.grid_id === gridId) || BASE_FLOOD_ZONES[0];
+  const feature =
+    BASE_FLOOD_ZONES.find((f) => f.properties.grid_id === gridId) || BASE_FLOOD_ZONES[0];
   const p = feature.properties;
+  const isNoRisk = p.rainfall_mm === 0 || p.flood_probability === 0 || p.risk_level === 'Low';
 
   return {
     grid_id: p.grid_id,
     area_name: p.area_name,
     district: p.district,
     city: p.city,
-    risk_level: p.risk_level,
+    risk_level: isNoRisk ? 'Low' : p.risk_level,
     duration_est: p.duration_est,
-    recommendation: p.recommendation,
-    commuter_advisory: p.risk_level === 'Extreme' || p.risk_level === 'High'
+    recommendation: isNoRisk
+      ? 'Aktivitas normal di seluruh area. Drainase kota berfungsi optimal tanpa ada indikasi hambatan air.'
+      : p.recommendation,
+    commuter_advisory: isNoRisk
+      ? 'Kondisi perjalanan aman dan lancar di seluruh ruas jalan.'
+      : p.risk_level === 'Extreme' || p.risk_level === 'High'
       ? 'Hindari bepergian dengan menggunakan kendaraan roda dua, hindari pohon rawan tumbang, dan gunakan jalan layang / rute alternatif.'
       : 'Kondisi perjalanan relatif aman. Selalu siapkan jas hujan dan pantau pergerakan radar.',
-    confidence_badge: p.confidence_badge,
+    confidence_badge: isNoRisk ? 'Data Terverifikasi (Aman)' : p.confidence_badge,
     confidence_score: p.confidence_score,
-    rainfall_mm: p.rainfall_mm,
+    rainfall_mm: isNoRisk ? 0 : p.rainfall_mm,
     water_level_cm: p.water_level_cm,
-    siaga_level: p.siaga_level,
-    peak_time: p.peak_time,
-    inundation_range: p.inundation_range,
-    evacuation_route: p.evacuation_route,
-    affected_roads: p.affected_roads,
-    hydrograph: generateHydrograph(p.water_level_cm, p.rainfall_mm),
+    siaga_level: isNoRisk ? 'Normal' : p.siaga_level,
+    peak_time: isNoRisk ? 'Nihil' : p.peak_time,
+    inundation_range: isNoRisk ? '0 cm' : p.inundation_range,
+    evacuation_route: isNoRisk
+      ? 'Seluruh akses jalan utama beroperasi normal dan lancar.'
+      : p.evacuation_route,
+    affected_roads: isNoRisk ? [] : p.affected_roads,
+    hydrograph: generateHydrograph(p.water_level_cm, isNoRisk ? 0 : p.rainfall_mm),
     nearby_stations: WATER_GATE_STATIONS.slice(0, 3),
     safe_shelters: EVACUATION_CENTERS.slice(0, 2),
     last_updated: 'Baru saja dianalisis oleh AI Engine',
@@ -617,7 +732,7 @@ export function getAnalysisForGrid(gridId: string): AreaAnalysisResponse {
 export function getDenseHeatPoints(horizon: TimeHorizon): Array<[number, number, number]> {
   let intensityFactor = 1.0;
   if (horizon === '1h') intensityFactor = 0.75;
-  else if (horizon === '3h') intensityFactor = 0.90;
+  else if (horizon === '3h') intensityFactor = 0.9;
   else if (horizon === '5h') intensityFactor = 1.0;
   else if (horizon === '12h') intensityFactor = 1.15;
   else if (horizon === '24h') intensityFactor = 0.85;
@@ -625,7 +740,7 @@ export function getDenseHeatPoints(horizon: TimeHorizon): Array<[number, number,
   const corridors = [
     // 1. Sungai Ciliwung Corridor (Katulampa -> Depok -> Rawajati -> Tebet -> Manggarai -> Pasar Ikan)
     { lat: -6.6339, lng: 106.8375, baseIntensity: 0.85 }, // Katulampa
-    { lat: -6.6020, lng: 106.8290, baseIntensity: 0.80 },
+    { lat: -6.6020, lng: 106.8290, baseIntensity: 0.8 },
     { lat: -6.5510, lng: 106.8310, baseIntensity: 0.78 },
     { lat: -6.4850, lng: 106.8340, baseIntensity: 0.82 }, // Bojonggede
     { lat: -6.4025, lng: 106.8322, baseIntensity: 0.88 }, // Depok Panus
@@ -635,14 +750,14 @@ export function getDenseHeatPoints(horizon: TimeHorizon): Array<[number, number,
     { lat: -6.2420, lng: 106.8600, baseIntensity: 0.94 }, // Pengadegan
     { lat: -6.2285, lng: 106.8640, baseIntensity: 0.96 }, // Kampung Melayu
     { lat: -6.2180, lng: 106.8570, baseIntensity: 0.92 }, // Bukit Duri
-    { lat: -6.2081, lng: 106.8488, baseIntensity: 0.90 }, // Manggarai
+    { lat: -6.2081, lng: 106.8488, baseIntensity: 0.9 }, // Manggarai
     { lat: -6.1850, lng: 106.8410, baseIntensity: 0.75 }, // Kwitang
-    { lat: -6.1680, lng: 106.8310, baseIntensity: 0.70 }, // Istiqlal
+    { lat: -6.1680, lng: 106.8310, baseIntensity: 0.7 }, // Istiqlal
     { lat: -6.1400, lng: 106.8250, baseIntensity: 0.72 }, // Gunung Sahari
     { lat: -6.1268, lng: 106.8089, baseIntensity: 0.85 }, // Pasar Ikan
 
     // 2. Kali Krukut & Mampang Corridor (Cinere -> Kemang -> Mampang -> Rasuna Said)
-    { lat: -6.3200, lng: 106.8020, baseIntensity: 0.70 },
+    { lat: -6.3200, lng: 106.8020, baseIntensity: 0.7 },
     { lat: -6.2850, lng: 106.8110, baseIntensity: 0.82 },
     { lat: -6.2620, lng: 106.8160, baseIntensity: 0.92 }, // Kemang Raya
     { lat: -6.2500, lng: 106.8220, baseIntensity: 0.88 }, // Bangka
@@ -650,28 +765,28 @@ export function getDenseHeatPoints(horizon: TimeHorizon): Array<[number, number,
     { lat: -6.2180, lng: 106.8230, baseIntensity: 0.78 }, // Kuningan Barat
     { lat: -6.2005, lng: 106.8143, baseIntensity: 0.82 }, // Karet BKB
     { lat: -6.1750, lng: 106.8120, baseIntensity: 0.65 }, // Cideng
-    { lat: -6.1450, lng: 106.8150, baseIntensity: 0.40 }, // Glodok
+    { lat: -6.1450, lng: 106.8150, baseIntensity: 0.4 }, // Glodok
 
     // 3. Kali Pesanggrahan Corridor (Sawangan -> Cipulir -> Kebayoran -> Kedoya)
     { lat: -6.3150, lng: 106.7620, baseIntensity: 0.72 },
     { lat: -6.2780, lng: 106.7680, baseIntensity: 0.78 },
     { lat: -6.2574, lng: 106.7725, baseIntensity: 0.84 }, // Pos Pesanggrahan
-    { lat: -6.2480, lng: 106.7720, baseIntensity: 0.80 }, // Cipulir
+    { lat: -6.2480, lng: 106.7720, baseIntensity: 0.8 }, // Cipulir
     { lat: -6.2180, lng: 106.7650, baseIntensity: 0.75 }, // Ulujami
-    { lat: -6.1850, lng: 106.7600, baseIntensity: 0.70 }, // Kedoya
+    { lat: -6.1850, lng: 106.7600, baseIntensity: 0.7 }, // Kedoya
 
     // 4. Kali Angke & Mookervaart Corridor (Ciledug -> Rawa Buaya -> Cengkareng -> Kapuk)
     { lat: -6.2220, lng: 106.6980, baseIntensity: 0.92 }, // Ciledug Indah
     { lat: -6.2050, lng: 106.7080, baseIntensity: 0.86 }, // Karang Tengah
     { lat: -6.1780, lng: 106.7150, baseIntensity: 0.82 }, // Semanan
-    { lat: -6.1550, lng: 106.7260, baseIntensity: 0.90 }, // Rawa Buaya
+    { lat: -6.1550, lng: 106.7260, baseIntensity: 0.9 }, // Rawa Buaya
     { lat: -6.1420, lng: 106.7350, baseIntensity: 0.85 }, // Cengkareng
     { lat: -6.1280, lng: 106.7550, baseIntensity: 0.78 }, // Kapuk Poglar
 
     // 5. Kali Bekasi Corridor (Cikeas/Cileungsi -> PGP -> Jatiasih -> Bekasi Timur)
     { lat: -6.3450, lng: 106.9650, baseIntensity: 0.88 },
     { lat: -6.3080, lng: 106.9740, baseIntensity: 0.98 }, // Pondok Gede Permai
-    { lat: -6.2820, lng: 106.9850, baseIntensity: 0.90 }, // Jatiasih
+    { lat: -6.2820, lng: 106.9850, baseIntensity: 0.9 }, // Jatiasih
     { lat: -6.2550, lng: 106.9920, baseIntensity: 0.86 }, // Kemang Pratama
     { lat: -6.2350, lng: 107.0050, baseIntensity: 0.82 }, // Bekasi Timur
 
@@ -696,24 +811,19 @@ export function getDenseHeatPoints(horizon: TimeHorizon): Array<[number, number,
     const intensity = Math.min(1.0, Math.max(0.15, node.baseIntensity * intensityFactor));
     heatPoints.push([node.lat, node.lng, intensity]);
 
-    // Radial dispersion points around each node to produce continuous smooth fluid field
     const offsets = [
       { dLat: 0.005, dLng: 0.006, f: 0.88 },
       { dLat: -0.005, dLng: -0.006, f: 0.88 },
       { dLat: 0.006, dLng: -0.005, f: 0.82 },
       { dLat: -0.006, dLng: 0.005, f: 0.82 },
-      { dLat: 0.010, dLng: 0.008, f: 0.55 },
+      { dLat: 0.01, dLng: 0.008, f: 0.55 },
       { dLat: -0.009, dLng: -0.008, f: 0.55 },
-      { dLat: 0.008, dLng: -0.009, f: 0.50 },
-      { dLat: -0.008, dLng: 0.009, f: 0.50 },
+      { dLat: 0.008, dLng: -0.009, f: 0.5 },
+      { dLat: -0.008, dLng: 0.009, f: 0.5 },
     ];
 
     offsets.forEach((off) => {
-      heatPoints.push([
-        node.lat + off.dLat,
-        node.lng + off.dLng,
-        intensity * off.f,
-      ]);
+      heatPoints.push([node.lat + off.dLat, node.lng + off.dLng, intensity * off.f]);
     });
   });
 

@@ -14,11 +14,11 @@ import {
   BASE_FLOOD_ZONES,
   getAnalysisForGrid,
 } from '@/data/floodData';
-import { BrandingHeader } from './BrandingHeader';
 import { RightSidebar } from './RightSidebar';
 import { HeatmapLegend } from './HeatmapLegend';
 import { MapControls } from './MapControls';
 import { SearchModal } from './SearchModal';
+import { TopStatusPill } from './TopStatusPill';
 
 // Dynamically import LeafletMap with SSR disabled
 const LeafletMap = dynamic(
@@ -171,29 +171,12 @@ export const MapDashboard: React.FC = () => {
         />
       </div>
 
-      {/* 2. Top-Left Floating Branding Header */}
-      <header className="absolute top-4 left-4 z-30 max-w-[calc(100vw-32px)]">
-        <BrandingHeader
-          onOpenSearch={() => setIsSearchOpen(true)}
-          highRiskCount={highRiskCount}
-        />
+      {/* 2. Top status, centered independently from the map controls */}
+      <header className="absolute top-4 left-1/2 z-30 -translate-x-1/2">
+        <TopStatusPill highRiskCount={highRiskCount} />
       </header>
 
-      {/* 3. Bottom-Left Quick Status Indicator */}
-      <div className="hidden lg:flex absolute bottom-4 left-4 z-30 glass-panel rounded-xl px-3 py-2 shadow-lg backdrop-blur-md text-[11px] text-slate-500 dark:text-slate-400 items-center gap-2 border border-slate-200/50 dark:border-slate-800/60">
-        <span className="font-semibold text-slate-700 dark:text-slate-200">
-          Pusat Pemantauan:
-        </span>
-        <span>Jabodetabek Basin Grid</span>
-        <span className="text-slate-300 dark:text-slate-700">•</span>
-        <span className="font-mono text-blue-600 dark:text-blue-400">
-          -6.2088, 106.8456
-        </span>
-        <span className="text-slate-300 dark:text-slate-700">•</span>
-        <span>{features.length} Daerah Terpantau</span>
-      </div>
-
-      {/* 4. Bottom-Right Controls & Heatmap Legend */}
+      {/* 3. Bottom-Right Controls & Heatmap Legend */}
       <div className="absolute bottom-4 right-4 sm:right-6 z-30 flex flex-col items-end gap-2.5 max-w-[calc(100vw-32px)] sm:max-w-md">
         {/* Map View Controls (Zoom, Layers, Basemap) */}
         <div className="self-end">
@@ -217,7 +200,7 @@ export const MapDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. Right Sidebar (Floating / Slide-out Panel) */}
+      {/* 4. Right Sidebar (Floating / Slide-out Panel) */}
       <RightSidebar
         analysis={analysis}
         isLoading={false}
@@ -231,7 +214,7 @@ export const MapDashboard: React.FC = () => {
         onOpenSearchModal={() => setIsSearchOpen(true)}
       />
 
-      {/* 6. Spotlight Search Modal (⌘F / Ctrl+K) */}
+      {/* 5. Spotlight Search Modal (⌘F / Ctrl+K) */}
       <SearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
