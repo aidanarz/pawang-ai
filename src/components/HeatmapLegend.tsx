@@ -16,10 +16,10 @@ export const HeatmapLegend: React.FC<HeatmapLegendProps> = ({
     <div className="w-64 select-none">
       <div className="space-y-1 rounded-md bg-transparent px-1 py-1">
         <div
-          className="h-3.5 w-full overflow-hidden rounded-sm border border-black/10 shadow-inner dark:border-white/10"
+          className="h-3.5 w-full overflow-hidden rounded-sm"
           style={{
             background:
-              'linear-gradient(to right, #FDE047 0%, #FACC15 16%, #FB923C 33%, #F97316 50%, #C084FC 66%, #9333EA 83%, #C026D3 100%)',
+              'linear-gradient(to right, #22C55E 0%, #84CC16 22%, #EAB308 44%, #FACC15 58%, #F97316 74%, #EF4444 88%, #B91C1C 100%)',
           }}
         />
         <div className="flex justify-between px-0.5">
@@ -34,11 +34,11 @@ export const HeatmapLegend: React.FC<HeatmapLegendProps> = ({
                 className={`text-[10.5px] font-mono transition-colors ${
                   isSelected
                     ? 'font-bold text-blue-600 dark:text-blue-400'
-                    : 'text-slate-700 dark:text-slate-200'
+                    : 'text-black dark:text-slate-100'
                 }`}
                 aria-label={`Filter rainfall ${stop.label} millimeters`}
               >
-                {stop.label}
+                {stop.mm === 1.5 ? `${stop.label} mm` : stop.label}
               </button>
             );
           })}

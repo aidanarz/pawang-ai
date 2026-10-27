@@ -59,7 +59,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
       <div className="glass-panel rounded-xl shadow-lg p-1 flex flex-col gap-1 backdrop-blur-md">
         <button
           onClick={onZoomIn}
-          className="p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-center"
+          className="p-2 text-black dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-center"
           title="Zoom In"
         >
           <Plus size={18} />
@@ -67,7 +67,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
         <div className="h-[1px] bg-slate-200/60 dark:bg-slate-800/80 mx-1" />
         <button
           onClick={onZoomOut}
-          className="p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-center"
+          className="p-2 text-black dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-center"
           title="Zoom Out"
         >
           <Minus size={18} />
@@ -75,7 +75,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
         <div className="h-[1px] bg-slate-200/60 dark:bg-slate-800/80 mx-1" />
         <button
           onClick={onResetView}
-          className="p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-center"
+          className="p-2 text-black dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-center"
           title="Pusatkan ke Jabodetabek"
         >
           <Crosshair size={18} />
@@ -93,8 +93,8 @@ export const MapControls: React.FC<MapControlsProps> = ({
             }}
             className={`p-2 rounded-lg transition-colors flex items-center justify-center ${
               showLayersMenu
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-gray-100 text-black shadow-md dark:bg-blue-600 dark:text-white'
+                : 'text-black dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
             title="Pengaturan Layer"
           >
@@ -109,8 +109,8 @@ export const MapControls: React.FC<MapControlsProps> = ({
             }}
             className={`p-2 rounded-lg transition-colors flex items-center justify-center ${
               showBasemapMenu
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-gray-100 text-black shadow-md dark:bg-blue-600 dark:text-white'
+                : 'text-black dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
             title="Gaya Peta Basemap"
           >
@@ -120,7 +120,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
           {/* Fullscreen button */}
           <button
             onClick={toggleFullscreen}
-            className="p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-center"
+            className="p-2 text-black dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-center"
             title="Layar Penuh"
           >
             {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
@@ -136,7 +136,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
             <div className="space-y-2">
               <label className="flex items-center justify-between text-xs cursor-pointer hover:bg-slate-500/10 p-1.5 rounded-lg transition-colors">
                 <span className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-black dark:bg-slate-300" />
                   Grid Heatmap Banjir
                 </span>
                 <input
@@ -149,7 +149,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
 
               <label className="flex items-center justify-between text-xs cursor-pointer hover:bg-slate-500/10 p-1.5 rounded-lg transition-colors">
                 <span className="flex items-center gap-2">
-                  <Droplets size={13} className="text-blue-500" />
+                  <Droplets size={13} className="text-black dark:text-slate-100" />
                   Pos Pantau / Pintu Air
                 </span>
                 <input
@@ -162,7 +162,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
 
               <label className="flex items-center justify-between text-xs cursor-pointer hover:bg-slate-500/10 p-1.5 rounded-lg transition-colors">
                 <span className="flex items-center gap-2">
-                  <ShieldAlert size={13} className="text-emerald-500" />
+                  <ShieldAlert size={13} className="text-black dark:text-slate-100" />
                   Posko Pengungsian
                 </span>
                 <input
@@ -175,7 +175,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
 
               <label className="flex items-center justify-between text-xs cursor-pointer hover:bg-slate-500/10 p-1.5 rounded-lg transition-colors">
                 <span className="flex items-center gap-2">
-                  <Radio size={13} className="text-amber-500" />
+                  <Radio size={13} className="text-black dark:text-slate-100" />
                   Radar Reflektivitas
                 </span>
                 <input
@@ -198,7 +198,6 @@ export const MapControls: React.FC<MapControlsProps> = ({
             <div className="space-y-1.5">
               {[
                 { id: 'dark', label: 'Dark Mode (Free OSM)', desc: 'Mode Gelap NOAA Tanpa API Key' },
-                { id: 'positron', label: 'OpenStreetMap (Light)', desc: 'Mode Terang Bebas & Cepat' },
                 { id: 'topographic', label: 'OpenTopoMap (Topografi)', desc: 'Kontur Sungai & Elevasi NOAA' },
                 { id: 'osm', label: 'OSM Humanitarian (HOT)', desc: 'Peta Khusus Mitigasi Bencana' },
               ].map((mapOption) => (
@@ -210,7 +209,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
                   }}
                   className={`w-full text-left p-2 rounded-lg text-xs transition-all ${
                     basemap === mapOption.id
-                      ? 'bg-blue-600 text-white font-semibold shadow-md'
+                      ? 'bg-gray-100 text-black font-semibold shadow-md dark:bg-blue-600 dark:text-white'
                       : 'hover:bg-slate-500/10 text-slate-700 dark:text-slate-300'
                   }`}
                 >

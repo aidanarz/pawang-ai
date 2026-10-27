@@ -38,12 +38,12 @@ const LeafletMap = dynamic(
 export const MapDashboard: React.FC = () => {
   // App States
   const [selectedGridId, setSelectedGridId] = useState<string>('JKT-KML-01');
+  const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
   const [timeHorizon, setTimeHorizon] = useState<TimeHorizon>('5h');
   const [features, setFeatures] = useState<GeoJSONGridFeature[]>(BASE_FLOOD_ZONES);
   const [analysis, setAnalysis] = useState<AreaAnalysisResponse | null>(() =>
     getAnalysisForGrid('JKT-KML-01')
   );
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [basemap, setBasemap] = useState<BasemapType>('dark');
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
@@ -56,14 +56,10 @@ export const MapDashboard: React.FC = () => {
     radarPulse: true,
   });
 
-  // Sync theme with document classList
+  // Pawang AI uses a single dark dashboard theme.
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [theme]);
+    document.documentElement.classList.add('dark');
+  }, []);
 
   // Fetch heatmap data when timeHorizon changes
   useEffect(() => {
@@ -122,13 +118,6 @@ export const MapDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [isSimulating]);
 
-  // Theme toggle handler
-  const handleToggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    setBasemap(nextTheme === 'dark' ? 'dark' : 'positron');
-  };
-
   // Layer toggle handler
   const handleToggleLayer = (layerKey: keyof typeof layers) => {
     setLayers((prev) => ({
@@ -150,6 +139,25 @@ export const MapDashboard: React.FC = () => {
     window.dispatchEvent(new CustomEvent('pawang:reset'));
   };
 
+  const handleSelectGrid = (gridId: string, position?: [number, number]) => {
+    setSelectedGridId(gridId);
+    if (position) {
+      setMarkerPosition(position);
+      return;
+    }
+
+    const selectedFeature = features.find((feature) => feature.properties.grid_id === gridId);
+    if (selectedFeature?.geometry.coordinates[0]) {
+      const coordinates = selectedFeature.geometry.coordinates[0];
+      const latitudes = coordinates.map((coordinate) => coordinate[1]);
+      const longitudes = coordinates.map((coordinate) => coordinate[0]);
+      setMarkerPosition([
+        (Math.min(...latitudes) + Math.max(...latitudes)) / 2,
+        (Math.min(...longitudes) + Math.max(...longitudes)) / 2,
+      ]);
+    }
+  };
+
   const highRiskCount = features.filter(
     (f) => f.properties.risk_level === 'High' || f.properties.risk_level === 'Extreme'
   ).length;
@@ -160,14 +168,14 @@ export const MapDashboard: React.FC = () => {
       <div className="absolute inset-0 z-0">
         <LeafletMap
           features={features}
-          selectedGridId={selectedGridId}
+          markerPosition={markerPosition}
           basemap={basemap}
-          theme={theme}
           timeHorizon={timeHorizon}
           layers={layers}
           waterGates={WATER_GATE_STATIONS}
           evacuationCenters={EVACUATION_CENTERS}
           activeRainThreshold={activeRainThreshold}
+          onSelectGrid={handleSelectGrid}
         />
       </div>
 
@@ -207,9 +215,7 @@ export const MapDashboard: React.FC = () => {
         onChangeTimeHorizon={(h) => setTimeHorizon(h)}
         isSimulating={isSimulating}
         onToggleSimulation={() => setIsSimulating(!isSimulating)}
-        theme={theme}
-        onToggleTheme={handleToggleTheme}
-        onSelectRegionById={(gridId) => setSelectedGridId(gridId)}
+        onSelectRegionById={handleSelectGrid}
         onOpenSearchModal={() => setIsSearchOpen(true)}
       />
 
@@ -217,7 +223,7 @@ export const MapDashboard: React.FC = () => {
       <SearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        onSelectRegion={(gridId) => setSelectedGridId(gridId)}
+        onSelectRegion={handleSelectGrid}
       />
     </main>
   );

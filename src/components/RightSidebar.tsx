@@ -10,8 +10,6 @@ import {
   Compass,
   Car,
   Wind,
-  Sun,
-  Moon,
   ChevronRight,
   ChevronLeft,
   Navigation,
@@ -19,7 +17,6 @@ import {
   Pause,
   MapPin,
   PhoneCall,
-  CheckCircle2,
 } from 'lucide-react';
 import { AreaAnalysisResponse, TimeHorizon } from '@/data/types';
 import { getRiskBadgeClasses, getSiagaBadgeClasses, getColorForRainfall } from '@/utils/colorScale';
@@ -33,8 +30,6 @@ interface RightSidebarProps {
   onChangeTimeHorizon: (horizon: TimeHorizon) => void;
   isSimulating: boolean;
   onToggleSimulation: () => void;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
   onSelectRegionById: (gridId: string) => void;
   onOpenSearchModal: () => void;
 }
@@ -46,8 +41,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   onChangeTimeHorizon,
   isSimulating,
   onToggleSimulation,
-  theme,
-  onToggleTheme,
   onSelectRegionById,
   onOpenSearchModal,
 }) => {
@@ -71,6 +64,14 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   const siagaClasses = analysis
     ? getSiagaBadgeClasses(analysis.siaga_level)
     : getSiagaBadgeClasses('Normal');
+  const emergencyContacts = [
+    { label: 'BPBD', number: '112' },
+    { label: 'BNPB', number: '117' },
+    { label: 'SAR', number: '115' },
+    { label: 'Polisi', number: '110' },
+    { label: 'Damkar', number: '113' },
+    { label: 'Ambulans', number: '118' },
+  ];
   const isNoRisk = Boolean(
     analysis && analysis.risk_level === 'Low' && analysis.rainfall_mm === 0
   );
@@ -80,27 +81,30 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
       {/* Google Maps-style attached collapse toggle */}
       <button
         onClick={() => setIsCollapsed((collapsed) => !collapsed)}
-        className="fixed top-1/2 z-50 flex h-14 w-7 -translate-y-1/2 items-center justify-center rounded-l-md border border-r-0 border-gray-200 bg-white text-[#202124] shadow-md transition-[right] duration-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+        className="fixed top-1/2 z-50 flex h-14 w-7 -translate-y-1/2 items-center justify-center rounded-l-md border border-r-0 border-gray-200 bg-white text-blue-600 transition-[right] duration-300 hover:bg-gray-50 dark:border-gray-700/50 dark:bg-[#1E1E2D] dark:text-blue-400 dark:hover:bg-slate-800"
         style={{ right: isCollapsed ? 0 : 'min(410px, 100vw)' }}
         title={isCollapsed ? 'Buka Panel Analisa' : 'Sembunyikan Panel Analisa'}
         aria-label={isCollapsed ? 'Buka Panel Analisa' : 'Sembunyikan Panel Analisa'}
       >
-        {isCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+        {isCollapsed ? (
+          <ChevronLeft size={16} className="text-black dark:text-slate-100" />
+        ) : (
+          <ChevronRight size={16} className="text-black dark:text-slate-100" />
+        )}
       </button>
 
       {/* Full-height right panel */}
       <aside
-        className={`sidebar-surface fixed inset-y-0 right-0 z-40 flex h-screen w-full flex-col overflow-hidden border-l border-gray-200 bg-white shadow-2xl transition-transform duration-300 ease-in-out dark:border-slate-800 dark:bg-slate-950 sm:w-[410px] ${
+        className={`sidebar-surface fixed inset-y-0 right-0 z-40 flex h-screen w-full flex-col overflow-hidden border-l border-gray-200 bg-white transition-transform duration-300 ease-in-out dark:border-gray-700/50 dark:bg-[#1E1E2D] sm:w-[410px] ${
           isCollapsed ? 'translate-x-full pointer-events-none' : 'translate-x-0'
         }`}
       >
         {/* Panel Header & Search Bar */}
-        <div className="p-3.5 pb-2.5 border-b border-gray-200 dark:border-slate-800/70 bg-white dark:bg-slate-900/30">
+        <div className="border-b border-gray-200 bg-white p-3.5 pb-2.5 dark:border-gray-700/50 dark:bg-[#1E1E2D]">
           <div className="flex items-center justify-between mb-2.5">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-radar-pulse" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                Pusat Analisis Hidrologi
+            <div className="flex items-center">
+              <span className="text-sm font-semibold leading-relaxed text-gray-900 dark:text-gray-100">
+                Periksa Daerah
               </span>
             </div>
 
@@ -111,21 +115,21 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
             <div className="relative flex items-center">
               <Search
                 size={15}
-                className="absolute left-3 text-slate-400 dark:text-slate-500 pointer-events-none"
+                className="pointer-events-none absolute left-3 text-blue-600 dark:text-blue-400"
               />
               <input
                 type="text"
-                placeholder="Periksa daerah (cth: Kemang, Rawajati, Manggarai...)"
+                placeholder="ketik daerah atau klik dua kali pada peta"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-                className="w-full pl-9 pr-16 py-2 rounded-xl text-xs bg-white dark:bg-slate-800/90 border border-gray-200 dark:border-slate-700/80 text-[#202124] dark:text-slate-100 placeholder-[#5F6368] dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-16 text-xs leading-relaxed text-gray-900 transition-all placeholder:text-gray-500 placeholder:italic focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-gray-700/50 dark:bg-[#1E1E2D] dark:text-gray-100 dark:placeholder:text-gray-400"
               />
               <div className="absolute right-2 flex items-center gap-1">
                 <kbd
                   onClick={onOpenSearchModal}
-                  className="cursor-pointer text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/80 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-xs"
+                  className="cursor-pointer rounded border border-gray-200 bg-white/80 px-1.5 py-0.5 font-mono text-[10px] font-medium text-gray-500 dark:border-gray-700/50 dark:bg-[#1E1E2D] dark:text-gray-400"
                 >
                   ⌘F
                 </kbd>
@@ -180,14 +184,14 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Prakiraan:
               </span>
-              <div className="flex items-center bg-slate-200/60 dark:bg-slate-800/70 p-0.5 rounded-lg">
+              <div className="flex items-center bg-white dark:bg-slate-800/70 p-0.5 rounded-lg">
                 {(['1h', '3h', '5h', '12h', '24h'] as TimeHorizon[]).map((horizon) => (
                   <button
                     key={horizon}
                     onClick={() => onChangeTimeHorizon(horizon)}
                     className={`px-2 py-0.5 text-[10.5px] font-semibold rounded-md transition-all ${
                       timeHorizon === horizon
-                        ? 'bg-blue-600 text-white shadow-xs'
+                        ? 'bg-gray-100 text-gray-900 dark:bg-blue-600 dark:text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                     }`}
                   >
@@ -202,12 +206,16 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               onClick={onToggleSimulation}
               className={`p-1.5 rounded-lg flex items-center gap-1 text-[10.5px] font-medium transition-colors ${
                 isSimulating
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-500/10'
+                  ? 'bg-gray-100 text-gray-900 dark:bg-blue-600 dark:text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800/70'
               }`}
               title={isSimulating ? 'Jeda Simulasi' : 'Jalankan Simulasi Waktu'}
             >
-              {isSimulating ? <Pause size={13} /> : <Play size={13} />}
+              {isSimulating ? (
+                <Pause size={13} className="text-blue-600 dark:text-blue-400" />
+              ) : (
+                <Play size={13} className="text-blue-600 dark:text-blue-400" />
+              )}
               <span className="hidden xs:inline">{isSimulating ? 'Stop' : 'Play'}</span>
             </button>
           </div>
@@ -228,7 +236,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="flex items-center gap-1.5 text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">
-                    <Navigation size={11} className="shrink-0" />
+                    <Navigation size={11} className="shrink-0 text-blue-600 dark:text-blue-400" />
                     <span>{analysis.city} • {analysis.district}</span>
                   </div>
                   <h2 className="text-base font-extrabold text-slate-900 dark:text-white leading-tight mt-0.5">
@@ -238,9 +246,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
 
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${riskClasses.bg} ${riskClasses.text} ${riskClasses.border}`}
+                    className={`text-[11px] font-bold ${riskClasses.text}`}
                   >
-                    <span className={`w-2 h-2 rounded-full ${riskClasses.dot} animate-ping-slow`} />
                     {riskClasses.label}
                   </span>
                   <span className="text-[10px] font-mono text-slate-400">
@@ -250,37 +257,41 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               </div>
 
               {/* SECTION 1: Overview Analisa Card */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                    <AlertTriangle size={14} className="text-amber-500" />
-                    Overview Analisa AI
-                  </span>
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                    <CheckCircle2 size={10} />
-                    {analysis.confidence_badge}
+              <div className="min-h-[270px] space-y-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700/50">
+                <div className="flex w-full items-start text-left">
+                  <span className="flex flex-col gap-1">
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+                      <AlertTriangle size={14} className="text-blue-600 dark:text-blue-400" />
+                      Overview Analisa AI
+                    </span>
+                    <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                      High Data Confidence
+                    </span>
                   </span>
                 </div>
 
                 {/* High-level AI Summary Text */}
-                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium p-2.5 border-y border-gray-200 dark:border-gray-700/50">
+                <p className="min-h-[72px] text-justify text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium p-2.5 border-y border-gray-200 dark:border-gray-700/50">
                   {isNoRisk
                     ? 'Kondisi wilayah terpantau aman. Tidak terdapat probabilitas presipitasi maupun indikasi genangan air pada area ini untuk rentang waktu perkiraan.'
                     : analysis.risk_level === 'Extreme'
-                    ? `⚠️ PERINGATAN KRITIS: Adanya kemungkinan banjir parah pada daerah ini pada ${timeHorizon} berikutnya akibat limpasan air kiriman dan intensitas hujan tinggi.`
+                    ? `PERINGATAN KRITIS: Adanya kemungkinan banjir parah pada daerah ini pada ${timeHorizon} berikutnya akibat limpasan air kiriman dan intensitas hujan tinggi.`
                     : analysis.risk_level === 'High'
-                    ? `⚠️ Adanya kemungkinan banjir sedang hingga tinggi pada daerah ini pada ${timeHorizon} berikutnya dengan estimasi genangan ${analysis.inundation_range}.`
+                    ? `Adanya kemungkinan banjir sedang hingga tinggi pada daerah ini pada ${timeHorizon} berikutnya dengan estimasi genangan ${analysis.inundation_range}.`
                     : analysis.risk_level === 'Medium'
                     ? `Adanya potensi genangan air sedang pada cekungan jalan dan saluran drainase dalam rentang ${timeHorizon} ke depan.`
                     : `Kondisi daerah terpantau aman dan stabil dalam rentang ${timeHorizon} ke depan dengan risiko banjir minimal.`}
                 </p>
 
                 {/* Hydrologic Metrics Grid */}
+                <div className="text-center text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Informasi Lanjut
+                </div>
                 <div className="grid grid-cols-2 gap-0 text-xs border-y border-gray-200 dark:border-gray-700/50">
                   {/* Metric: Rainfall */}
                   <div className="p-2.5 border-r border-b border-gray-200 dark:border-gray-700/50">
                     <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[10px]">
-                      <Droplets size={12} className="text-blue-500" />
+                      <Droplets size={12} className="text-blue-600 dark:text-blue-400" />
                       <span>Curah Hujan</span>
                     </div>
                     <div className="text-sm font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-baseline gap-1">
@@ -306,7 +317,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   {/* Metric: Water Level (TMA) */}
                   <div className="p-2.5 border-b border-gray-200 dark:border-gray-700/50">
                     <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[10px]">
-                      <Clock size={12} className="text-indigo-500" />
+                      <Clock size={12} className="text-blue-600 dark:text-blue-400" />
                       <span>Status Muka Air</span>
                     </div>
                     <div className="text-sm font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-baseline gap-1">
@@ -314,7 +325,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                       <span className="text-[10px] font-normal text-slate-400">cm</span>
                     </div>
                     <span
-                      className={`inline-block px-1.5 py-0.2 rounded text-[9.5px] font-bold mt-0.5 border ${siagaClasses.bg} ${siagaClasses.text} ${siagaClasses.border}`}
+                      className={`text-[9.5px] font-bold ${siagaClasses.text}`}
                     >
                       {isNoRisk ? 'Aman' : analysis.siaga_level}
                     </span>
@@ -348,30 +359,31 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 </div>
 
                 {/* Hydrograph Curve Chart */}
-                <HydrographChart
-                  data={analysis.hydrograph}
-                  riskLevel={analysis.risk_level}
-                />
+                <div className="border-b border-gray-200 pb-3 dark:border-gray-700/50">
+                  <HydrographChart
+                    data={analysis.hydrograph}
+                  />
+                </div>
               </div>
 
               {/* SECTION 2: Recommendations / Early Warning Card */}
               <div className="glass-panel rounded-xl p-3 bg-slate-900/5 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/80 space-y-3">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                    <ShieldCheck size={14} className="text-blue-500" />
+                    <ShieldCheck size={14} className="text-blue-600 dark:text-blue-400" />
                     Rekomendasi & Peringatan Dini
                   </span>
                   <span className="text-[10px] text-slate-400">Panduan Komuter</span>
                 </div>
 
                 {/* Commuter Action Advice */}
-                <div className="p-2.5 rounded-lg bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 flex items-start gap-2.5">
-                  <Car size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="p-2.5 rounded-lg bg-blue-500/10 dark:bg-blue-500/15 border border-blue-500/30 flex items-start gap-2.5">
+                  <Car size={16} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                   <div className="text-xs">
-                    <div className="font-bold text-amber-800 dark:text-amber-200 mb-0.5">
+                    <div className="font-bold text-gray-900 dark:text-gray-100 mb-0.5">
                       Peringatan Pengendara:
                     </div>
-                    <div className="text-amber-900/90 dark:text-amber-200/90 leading-relaxed font-medium">
+                    <div className="text-gray-800 dark:text-gray-200 leading-relaxed font-medium">
                       {analysis.recommendation}
                     </div>
                   </div>
@@ -394,7 +406,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 {analysis.affected_roads && analysis.affected_roads.length > 0 && (
                   <div>
                     <div className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1">
-                      <Wind size={11} />
+                      <Wind size={11} className="text-blue-600 dark:text-blue-400" />
                       Ruas Jalan Terdampak Genangan:
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -411,36 +423,26 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   </div>
                 )}
 
-                {/* Safe Shelters & Emergency Contacts */}
-                {analysis.safe_shelters && analysis.safe_shelters.length > 0 && (
-                  <div className="pt-2 border-t border-slate-200/50 dark:border-slate-800/60">
-                    <div className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
-                      Posko Pengungsian Terdekat:
-                    </div>
-                    <div className="space-y-1.5">
-                      {analysis.safe_shelters.map((shelter) => (
-                        <div
-                          key={shelter.id}
-                          className="p-2 rounded-lg bg-white/40 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50 text-[11px]"
-                        >
-                          <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                            <span>{shelter.name}</span>
-                            <span className="text-[10px] font-normal text-emerald-600 dark:text-emerald-400">
-                              Kapasitas: {shelter.capacity - shelter.occupancy} tersisa
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                            {shelter.address}
-                          </div>
-                          <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1 font-mono">
-                            <PhoneCall size={10} />
-                            {shelter.contact}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                <div className="border-t border-gray-200 pt-2 dark:border-gray-700/50">
+                  <div className="mb-1.5 text-[10.5px] font-semibold text-slate-500 dark:text-slate-400">
+                    Nomor Darurat
                   </div>
-                )}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {emergencyContacts.map((contact) => (
+                      <a
+                        key={contact.label}
+                        href={`tel:${contact.number}`}
+                        className="flex items-center justify-between rounded-md border border-gray-200 px-2 py-1.5 text-[10.5px] text-slate-700 dark:border-gray-700/50 dark:text-slate-200"
+                      >
+                        <span className="flex items-center gap-1">
+                          <PhoneCall size={10} className="text-blue-600 dark:text-blue-400" />
+                          {contact.label}
+                        </span>
+                        <span className="font-mono font-semibold">{contact.number}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
               </div>
             </>
           ) : (
@@ -450,41 +452,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
           )}
         </div>
 
-        {/* BOTTOM PANEL CONTROLS: Theme Toggle Switch */}
-        <div className="p-3 border-t border-gray-200 dark:border-slate-800/70 bg-white dark:bg-slate-900/30 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              Tema Tampilan:
-            </span>
-            <div className="flex items-center bg-slate-200/80 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-300/50 dark:border-slate-700">
-              <button
-                onClick={onToggleTheme}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
-                  theme === 'light'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Sun size={12} className={theme === 'light' ? 'text-amber-500' : ''} />
-                <span>Light</span>
-              </button>
-              <button
-                onClick={onToggleTheme}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 text-white shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                <Moon size={12} className={theme === 'dark' ? 'text-blue-400' : ''} />
-                <span>Dark</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="text-[10.5px] text-slate-400 font-mono">
-            BPBD 112 • BMKG
-          </div>
+        <div className="border-t border-gray-200 px-3 py-2 text-center text-[9.5px] leading-relaxed text-slate-400 dark:border-slate-800/70">
+          Prediksi menggunakan learning model dengan guardrails dan dievaluasi oleh agentic AI, data belum tentu 100% akurat
         </div>
       </aside>
     </>

@@ -5,14 +5,13 @@ import { HydrographPoint } from '@/data/types';
 
 interface HydrographChartProps {
   data: HydrographPoint[];
-  riskLevel: string;
 }
 
-export const HydrographChart: React.FC<HydrographChartProps> = ({ data, riskLevel }) => {
+export const HydrographChart: React.FC<HydrographChartProps> = ({ data }) => {
   if (!data || data.length === 0) return null;
 
   // Compute min and max for scaling
-  const maxLevel = Math.max(...data.map((d) => Math.max(d.waterLevel, d.threshold))) * 1.15;
+  const maxLevel = Math.max(...data.map((d) => d.waterLevel)) * 1.15;
   const minLevel = Math.min(...data.map((d) => d.waterLevel)) * 0.8;
   const range = maxLevel - minLevel || 1;
 
@@ -34,27 +33,21 @@ export const HydrographChart: React.FC<HydrographChartProps> = ({ data, riskLeve
   const linePoints = data.map((d, i) => `${getX(i)},${getY(d.waterLevel)}`).join(' ');
   const areaPoints = `${getX(0)},${padding.top + graphHeight} ${linePoints} ${getX(data.length - 1)},${padding.top + graphHeight}`;
 
-  const thresholdY = getY(data[0].threshold);
 
+
+  const maxWaterLevel = Math.max(...data.map((point) => point.waterLevel));
   const strokeColor =
-    riskLevel === 'Extreme'
-      ? '#D946EF'
-      : riskLevel === 'High'
-      ? '#A855F7'
-      : riskLevel === 'Medium'
-      ? '#F97316'
-      : '#EAB308';
+    maxWaterLevel >= 100 ? '#EF4444' : maxWaterLevel >= 60 ? '#EAB308' : '#22C55E';
 
   return (
     <div className="w-full pt-1">
       <div className="flex items-center justify-between text-[11px] mb-1.5 px-0.5">
         <span className="font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: strokeColor }} />
-          Tren Hidrograf (Tinggi Muka Air cm)
+          Tinggi Banjir (cm)
         </span>
-        <span className="text-red-500 font-mono text-[10px] flex items-center gap-1">
-          <span className="w-2.5 h-0.5 bg-red-400 inline-block border-t border-dashed border-red-500" />
-          Ambang Bahaya: {data[0].threshold}cm
+        <span className="text-slate-500 dark:text-slate-400 font-mono text-[10px]">
+          Semua titik
         </span>
       </div>
 
@@ -87,17 +80,6 @@ export const HydrographChart: React.FC<HydrographChartProps> = ({ data, riskLeve
             className="text-slate-200 dark:text-slate-800/80"
           />
 
-          {/* Danger Threshold Line */}
-          <line
-            x1={padding.left}
-            y1={thresholdY}
-            x2={width - padding.right}
-            y2={thresholdY}
-            stroke="#EF4444"
-            strokeWidth="1.2"
-            strokeDasharray="3,3"
-          />
-
           {/* Area Fill */}
           <polygon points={areaPoints} fill="url(#hydroFill)" />
 
@@ -115,27 +97,24 @@ export const HydrographChart: React.FC<HydrographChartProps> = ({ data, riskLeve
           {data.map((d, i) => {
             const cx = getX(i);
             const cy = getY(d.waterLevel);
-            const isPeak = d.waterLevel === Math.max(...data.map((x) => x.waterLevel));
             return (
               <g key={i}>
                 <circle
                   cx={cx}
                   cy={cy}
-                  r={isPeak ? 4.5 : 2.5}
-                  fill={isPeak ? '#EF4444' : strokeColor}
+                  r={3}
+                  fill={strokeColor}
                   stroke="#ffffff"
                   strokeWidth="1.5"
                 />
-                {isPeak && (
-                  <text
-                    x={cx}
-                    y={cy - 7}
-                    textAnchor="middle"
-                    className="text-[9px] font-bold fill-red-500 font-mono"
-                  >
-                    {d.waterLevel}cm
-                  </text>
-                )}
+                <text
+                  x={cx}
+                  y={cy - 7}
+                  textAnchor="middle"
+                  className="text-[8px] font-bold fill-slate-700 dark:fill-slate-200 font-mono"
+                >
+                  {d.waterLevel}
+                </text>
                 {/* Time labels */}
                 <text
                   x={cx}

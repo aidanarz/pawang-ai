@@ -4,7 +4,7 @@ export type TimeHorizon = '1h' | '3h' | '5h' | '12h' | '24h';
 
 export type SiagaLevel = 'Normal' | 'Siaga 4' | 'Siaga 3' | 'Siaga 2' | 'Siaga 1';
 
-export type BasemapType = 'dark' | 'positron' | 'topographic' | 'osm';
+export type BasemapType = 'dark' | 'topographic' | 'osm';
 
 export interface HydrographPoint {
   time: string;

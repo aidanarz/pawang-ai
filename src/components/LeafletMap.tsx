@@ -15,9 +15,8 @@ import 'leaflet.heat';
 
 interface LeafletMapProps {
   features: GeoJSONGridFeature[];
-  selectedGridId: string | null;
+  markerPosition: [number, number] | null;
   basemap: BasemapType;
-  theme: 'light' | 'dark';
   timeHorizon: TimeHorizon;
   layers: {
     heatmap: boolean;
@@ -28,20 +27,73 @@ interface LeafletMapProps {
   waterGates: WaterGateStation[];
   evacuationCenters: EvacuationCenter[];
   activeRainThreshold: number | null;
+  onSelectGrid: (gridId: string, position?: [number, number]) => void;
 }
+
+const isPointInRing = (lng: number, lat: number, ring: number[][]): boolean => {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersects =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+};
+
+const isPointInPolygon = (lng: number, lat: number, rings: number[][][]): boolean =>
+  isPointInRing(lng, lat, rings[0]) &&
+  !rings.slice(1).some((ring) => isPointInRing(lng, lat, ring));
+
+const isPointInBoundary = (
+  lng: number,
+  lat: number,
+  geometry: {
+    type: 'Polygon' | 'MultiPolygon';
+    coordinates: number[][][][] | number[][][];
+  }
+): boolean => {
+  if (geometry.type === 'Polygon') {
+    return isPointInPolygon(lng, lat, geometry.coordinates as number[][][]);
+  }
+
+  return geometry.coordinates.some((polygon) =>
+    isPointInPolygon(lng, lat, polygon as number[][][])
+  );
+};
+
+const getFeatureDistance = (
+  lng: number,
+  lat: number,
+  feature: GeoJSONGridFeature
+): number => {
+  const ring = feature.geometry.coordinates[0];
+  const center = ring.reduce(
+    (result, [featureLng, featureLat]) => ({
+      lng: result.lng + featureLng / ring.length,
+      lat: result.lat + featureLat / ring.length,
+    }),
+    { lng: 0, lat: 0 }
+  );
+  return (center.lng - lng) ** 2 + (center.lat - lat) ** 2;
+};
 
 export const LeafletMap: React.FC<LeafletMapProps> = ({
   features,
-  selectedGridId,
+  markerPosition,
   basemap,
-  theme,
   timeHorizon,
   layers,
   waterGates,
   evacuationCenters,
   activeRainThreshold,
+  onSelectGrid,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const featuresRef = useRef(features);
+  const onSelectGridRef = useRef(onSelectGrid);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const heatLayerRef = useRef<L.HeatLayer | null>(null);
@@ -49,6 +101,15 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   const waterGatesLayerRef = useRef<L.LayerGroup | null>(null);
   const evacLayerRef = useRef<L.LayerGroup | null>(null);
   const radarCircleLayerRef = useRef<L.LayerGroup | null>(null);
+  const selectedLocationLayerRef = useRef<L.LayerGroup | null>(null);
+
+  useEffect(() => {
+    featuresRef.current = features;
+  }, [features]);
+
+  useEffect(() => {
+    onSelectGridRef.current = onSelectGrid;
+  }, [onSelectGrid]);
 
   // 1. Initialize Leaflet Map
   useEffect(() => {
@@ -62,6 +123,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       attributionControl: false,
       minZoom: 9,
       maxZoom: 18,
+      doubleClickZoom: false,
     });
 
     mapInstanceRef.current = map;
@@ -70,6 +132,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     waterGatesLayerRef.current = L.layerGroup().addTo(map);
     evacLayerRef.current = L.layerGroup().addTo(map);
     radarCircleLayerRef.current = L.layerGroup().addTo(map);
+    selectedLocationLayerRef.current = L.layerGroup().addTo(map);
     jakartaBoundaryLayerRef.current = L.geoJSON(JAKARTA_ADMIN_BOUNDARY as GeoJSON.GeoJsonObject, {
       style: {
         color: 'red',
@@ -88,10 +151,51 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     window.addEventListener('pawang:zoomout', handleZoomOut);
     window.addEventListener('pawang:reset', handleReset);
 
+    let lastInspectionAt = 0;
+    const inspectMapCoordinate = (event: L.LeafletMouseEvent) => {
+      const now = Date.now();
+      if (now - lastInspectionAt < 350) return;
+      lastInspectionAt = now;
+
+      const { lat, lng } = event.latlng;
+      const isInsideJakarta = JAKARTA_ADMIN_BOUNDARY.features.some((feature) =>
+        isPointInBoundary(lng, lat, feature.geometry)
+      );
+      if (!isInsideJakarta) return;
+
+      const clickedFeature =
+        featuresRef.current.find((feature) =>
+          isPointInPolygon(lng, lat, feature.geometry.coordinates)
+        ) ??
+        featuresRef.current.reduce<GeoJSONGridFeature | null>(
+          (nearest, feature) => {
+            if (!nearest) return feature;
+            return getFeatureDistance(lng, lat, feature) <
+              getFeatureDistance(lng, lat, nearest)
+              ? feature
+              : nearest;
+          },
+          null
+        );
+
+      if (clickedFeature) {
+        onSelectGridRef.current(clickedFeature.properties.grid_id, [lat, lng]);
+      }
+    };
+
+    const handleMapDoubleClick = (event: L.LeafletMouseEvent) => {
+      if (event.originalEvent.button !== 0) return;
+      event.originalEvent.preventDefault();
+      inspectMapCoordinate(event);
+    };
+
+    map.on('dblclick', handleMapDoubleClick);
+
     return () => {
       window.removeEventListener('pawang:zoomin', handleZoomIn);
       window.removeEventListener('pawang:zoomout', handleZoomOut);
       window.removeEventListener('pawang:reset', handleReset);
+      map.off('dblclick', handleMapDoubleClick);
       if (heatLayerRef.current) {
         if (map.hasLayer(heatLayerRef.current)) {
           map.removeLayer(heatLayerRef.current);
@@ -125,11 +229,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
         subdomains = '';
         isDarkTiles = true;
-        break;
-      case 'positron':
-        // Standard OSM Light
-        tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-        subdomains = '';
         break;
       case 'topographic':
         // OpenTopoMap for hydrological contours and elevation
@@ -192,10 +291,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         minOpacity: 0.18,
         max: 1.0,
         gradient: {
-          0.4: 'yellow',
-          0.6: 'orange',
-          0.8: 'red',
-          1.0: 'purple',
+          0.35: '#22C55E',
+          0.55: '#EAB308',
+          0.75: '#FACC15',
+          0.9: '#EF4444',
+          1.0: '#B91C1C',
         },
       }).addTo(map);
     }
@@ -239,7 +339,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
 
       marker.bindPopup(`
         <div style="font-family: inherit; font-size: 12px; padding: 2px;">
-          <div style="font-weight: 800; font-size: 13px; color: ${theme === 'dark' ? '#F8FAFC' : '#0F172A'};">
+          <div style="font-weight: 800; font-size: 13px; color: #F8FAFC;">
             ${gate.name}
           </div>
           <div style="font-size: 11px; color: #64748B; margin-bottom: 6px;">${gate.river}</div>
@@ -261,7 +361,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
 
       group.addLayer(marker);
     });
-  }, [layers.waterGates, waterGates, theme]);
+  }, [layers.waterGates, waterGates]);
 
   // 6. Evacuation Centers (Posko Pengungsian)
   useEffect(() => {
@@ -326,24 +426,30 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     });
   }, [layers.radarPulse]);
 
-  // 8. Pan smoothly to selected region when selected externally
+  // 8. Keep the location marker independent from the selected analysis grid.
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !selectedGridId) return;
+    const selectedLayer = selectedLocationLayerRef.current;
+    if (!map || !selectedLayer) return;
 
-    const selectedFeature = features.find((f) => f.properties.grid_id === selectedGridId);
-    if (selectedFeature && selectedFeature.geometry.coordinates[0]) {
-      const coords = selectedFeature.geometry.coordinates[0];
-      const lats = coords.map((c) => c[1]);
-      const lngs = coords.map((c) => c[0]);
-      const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-      const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+    selectedLayer.clearLayers();
+    if (!markerPosition) return;
 
-      map.flyTo([centerLat, centerLng], 13, {
-        duration: 0.9,
-      });
-    }
-  }, [selectedGridId, features]);
+    const locationIcon = L.divIcon({
+      className: 'selected-location-marker',
+      html: `
+        <div style="width: 24px; height: 31px; display: flex; align-items: flex-start; justify-content: center; filter: drop-shadow(0 1px 2px rgba(0,0,0,.55));">
+          <svg width="24" height="31" viewBox="0 0 38 48" aria-hidden="true">
+            <path d="M19 2C9.6 2 2 9.6 2 19c0 12.5 17 26 17 26s17-13.5 17-26C36 9.6 28.4 2 19 2Z" fill="#EF4444" stroke="#991B1B" stroke-width="3"/>
+            <circle cx="19" cy="19" r="7" fill="#FEE2E2" stroke="#991B1B" stroke-width="3"/>
+          </svg>
+        </div>
+      `,
+      iconSize: [24, 31],
+      iconAnchor: [12, 29],
+    });
+    selectedLayer.addLayer(L.marker(markerPosition, { icon: locationIcon }));
+  }, [markerPosition]);
 
   return <div ref={mapContainerRef} className="w-full h-full" />;
 };

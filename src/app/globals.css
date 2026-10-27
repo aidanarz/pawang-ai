@@ -17,38 +17,6 @@
   --accent-blue: #3b82f6;
 }
 
-html:not(.dark) .glass-panel {
-  background: #ffffff;
-  border-color: #e5e7eb;
-}
-
-html:not(.dark) body {
-  color: #202124;
-}
-
-html:not(.dark) .sidebar-surface {
-  color: #202124;
-  background: #ffffff;
-}
-
-html:not(.dark) .sidebar-surface .text-slate-900,
-html:not(.dark) .sidebar-surface .text-slate-800,
-html:not(.dark) .sidebar-surface .text-slate-700,
-html:not(.dark) .sidebar-surface .text-slate-600,
-html:not(.dark) .sidebar-surface .text-slate-500,
-html:not(.dark) .sidebar-surface .text-slate-400,
-html:not(.dark) .sidebar-surface .text-slate-300,
-html:not(.dark) .sidebar-surface .text-slate-200,
-html:not(.dark) .sidebar-surface .text-slate-100,
-html:not(.dark) .sidebar-surface .text-white {
-  color: #202124 !important;
-}
-
-html:not(.dark) .sidebar-surface .placeholder-slate-400,
-html:not(.dark) .sidebar-surface .placeholder-slate-500 {
-  color: #5f6368 !important;
-}
-
 body {
   background-color: var(--background);
   color: var(--foreground);
