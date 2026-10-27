@@ -129,7 +129,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
 
         {/* Layers Flyout Menu */}
         {showLayersMenu && (
-          <div className="absolute right-12 bottom-0 glass-panel rounded-xl p-3 shadow-2xl w-60 z-50 text-slate-800 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150">
+          <div className="absolute left-full bottom-0 ml-2 glass-panel rounded-xl p-3 shadow-2xl w-60 z-50 text-slate-800 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150">
             <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 pb-1 border-b border-slate-200 dark:border-slate-800">
               Layer Aktif
             </div>
@@ -191,7 +191,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
 
         {/* Basemap Selection Flyout */}
         {showBasemapMenu && (
-          <div className="absolute right-12 bottom-0 glass-panel rounded-xl p-3 shadow-2xl w-52 z-50 text-slate-800 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150">
+          <div className="absolute left-full bottom-0 ml-2 glass-panel rounded-xl p-3 shadow-2xl w-52 z-50 text-slate-800 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150">
             <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 pb-1 border-b border-slate-200 dark:border-slate-800">
               Gaya Peta (Basemap)
             </div>

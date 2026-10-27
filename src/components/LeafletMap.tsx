@@ -9,15 +9,13 @@ import {
   EvacuationCenter,
   TimeHorizon,
 } from '@/data/types';
-import { getStyleForGrid } from '@/utils/colorScale';
-import { createHeatLayer, CanvasHeatLayer } from '@/utils/canvasHeatLayer';
 import { getDenseHeatPoints } from '@/data/floodData';
 import { JAKARTA_ADMIN_BOUNDARY } from '@/data/jakartaBoundary';
+import 'leaflet.heat';
 
 interface LeafletMapProps {
   features: GeoJSONGridFeature[];
   selectedGridId: string | null;
-  onSelectFeature: (gridId: string) => void;
   basemap: BasemapType;
   theme: 'light' | 'dark';
   timeHorizon: TimeHorizon;
@@ -35,7 +33,6 @@ interface LeafletMapProps {
 export const LeafletMap: React.FC<LeafletMapProps> = ({
   features,
   selectedGridId,
-  onSelectFeature,
   basemap,
   theme,
   timeHorizon,
@@ -47,8 +44,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
-  const canvasHeatLayerRef = useRef<CanvasHeatLayer | null>(null);
-  const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
+  const heatLayerRef = useRef<L.HeatLayer | null>(null);
   const jakartaBoundaryLayerRef = useRef<L.GeoJSON | null>(null);
   const waterGatesLayerRef = useRef<L.LayerGroup | null>(null);
   const evacLayerRef = useRef<L.LayerGroup | null>(null);
@@ -96,6 +92,12 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       window.removeEventListener('pawang:zoomin', handleZoomIn);
       window.removeEventListener('pawang:zoomout', handleZoomOut);
       window.removeEventListener('pawang:reset', handleReset);
+      if (heatLayerRef.current) {
+        if (map.hasLayer(heatLayerRef.current)) {
+          map.removeLayer(heatLayerRef.current);
+        }
+        heatLayerRef.current = null;
+      }
       map.remove();
       mapInstanceRef.current = null;
       jakartaBoundaryLayerRef.current = null;
@@ -160,155 +162,48 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     tileLayerRef.current = newTileLayer;
   }, [basemap]);
 
-  // 3. Render Smooth Fluid Canvas Heatmap (Non-Boxy, Gaussian Blended)
+  // 3. Render the official leaflet.heat flood-probability layer.
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
     if (!layers.heatmap) {
-      if (canvasHeatLayerRef.current) {
-        map.removeLayer(canvasHeatLayerRef.current);
-        canvasHeatLayerRef.current = null;
+      if (heatLayerRef.current) {
+        if (map.hasLayer(heatLayerRef.current)) {
+          map.removeLayer(heatLayerRef.current);
+        }
+        heatLayerRef.current = null;
       }
       return;
     }
 
-    // Generate continuous seed points along all Jabodetabek river channels
     const rawPoints = getDenseHeatPoints(timeHorizon);
-
-    // Apply rain threshold filter if selected from legend
     const filteredPoints = activeRainThreshold
       ? rawPoints.filter((p) => p[2] * 35 >= activeRainThreshold)
       : rawPoints;
 
-    if (canvasHeatLayerRef.current) {
-      canvasHeatLayerRef.current.setLatLngs(filteredPoints);
-      canvasHeatLayerRef.current.redraw();
+    if (heatLayerRef.current && map.hasLayer(heatLayerRef.current)) {
+      heatLayerRef.current.setLatLngs(filteredPoints);
     } else {
-      const heat = createHeatLayer(filteredPoints, {
-        radius: 46,
-        blur: 32,
+      heatLayerRef.current = null;
+      heatLayerRef.current = L.heatLayer(filteredPoints, {
+        radius: 25,
+        blur: 15,
         minOpacity: 0.18,
         max: 1.0,
         gradient: {
-          0.15: '#FDE047', // Soft yellow
-          0.35: '#FACC15', // Yellow
-          0.55: '#FB923C', // Orange
-          0.75: '#A855F7', // Purple
-          0.95: '#D946EF', // Deep Magenta
+          0.4: 'yellow',
+          0.6: 'orange',
+          0.8: 'red',
+          1.0: 'purple',
         },
       }).addTo(map);
-
-      canvasHeatLayerRef.current = heat;
     }
+
+    jakartaBoundaryLayerRef.current?.bringToFront();
   }, [timeHorizon, layers.heatmap, activeRainThreshold]);
 
-  // 4. Render Organic River Basin Contours (Non-Boxy, Curved) for Click Interaction & Tooltips
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-
-    if (geoJsonLayerRef.current) {
-      map.removeLayer(geoJsonLayerRef.current);
-      geoJsonLayerRef.current = null;
-    }
-
-    if (!layers.heatmap || !features || features.length === 0) return;
-
-    const visibleFeatures = activeRainThreshold
-      ? features.filter((f) => f.properties.rainfall_mm >= activeRainThreshold)
-      : features;
-
-    const geoJsonData: GeoJSON.FeatureCollection = {
-      type: 'FeatureCollection',
-      features: visibleFeatures as unknown as GeoJSON.Feature[],
-    };
-
-    const layer = L.geoJSON(geoJsonData, {
-      style: (feature) => {
-        if (!feature) return {};
-        const p = feature.properties as GeoJSONGridFeature['properties'];
-        const isSelected = p.grid_id === selectedGridId;
-        const baseStyle = getStyleForGrid(p.risk_level, p.flood_probability, isSelected);
-
-        // Keep fill translucent so the fluid canvas heatmap underneath shines through beautifully
-        return {
-          ...baseStyle,
-          fillOpacity: isSelected ? 0.25 : 0.08,
-          weight: isSelected ? 2.8 : 1.2,
-          dashArray: isSelected ? '4, 4' : '2, 4',
-        };
-      },
-      onEachFeature: (feature, layerItem) => {
-        const p = feature.properties as GeoJSONGridFeature['properties'];
-
-        // Rich Tooltip on Hover
-        layerItem.bindTooltip(
-          `
-          <div style="font-family: inherit; line-height: 1.35; padding: 2px;">
-            <div style="font-weight: 800; font-size: 12.5px; color: #fff;">${p.area_name}</div>
-            <div style="font-size: 10px; color: #94A3B8; margin-bottom: 5px;">${p.district}, ${p.city}</div>
-            <div style="display: flex; gap: 8px; align-items: center; font-size: 11px;">
-              <span style="font-weight: 700; color: #38BDF8;">TMA: ${p.water_level_cm}cm</span>
-              <span style="color: #FACC15; font-weight: 600;">${p.rainfall_mm} mm/h</span>
-              <span style="background: rgba(255,255,255,0.18); padding: 2px 7px; border-radius: 4px; font-size: 9.5px; font-weight: 700;">${p.risk_level}</span>
-            </div>
-          </div>
-        `,
-          {
-            sticky: true,
-            className: 'noaa-map-tooltip',
-          }
-        );
-
-        // Click Event to select region & center smoothly
-        layerItem.on({
-          click: (e) => {
-            L.DomEvent.stopPropagation(e);
-            onSelectFeature(p.grid_id);
-
-            const poly = layerItem as L.Polygon;
-            if (poly.getBounds) {
-              const bounds = poly.getBounds();
-              map.flyToBounds(bounds, {
-                padding: [80, 80],
-                maxZoom: 13,
-                duration: 0.8,
-              });
-            }
-          },
-          mouseover: (e) => {
-            const target = e.target as L.Path;
-            target.setStyle({
-              weight: 3,
-              color: '#38BDF8',
-              fillOpacity: 0.3,
-            });
-            target.bringToFront();
-          },
-          mouseout: (e) => {
-            const target = e.target as L.Path;
-            const isSelected = p.grid_id === selectedGridId;
-            const baseStyle = getStyleForGrid(
-              p.risk_level,
-              p.flood_probability,
-              isSelected
-            );
-            target.setStyle({
-              ...baseStyle,
-              fillOpacity: isSelected ? 0.25 : 0.08,
-              weight: isSelected ? 2.8 : 1.2,
-              dashArray: isSelected ? '4, 4' : '2, 4',
-            });
-          },
-        });
-      },
-    }).addTo(map);
-
-    geoJsonLayerRef.current = layer;
-  }, [features, selectedGridId, layers.heatmap, activeRainThreshold, onSelectFeature]);
-
-  // 5. River Water Gate Stations (Pintu Air / Stream Gauges)
+  // 4. River Water Gate Stations (Pintu Air / Stream Gauges)
   useEffect(() => {
     const group = waterGatesLayerRef.current;
     if (!group) return;

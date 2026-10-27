@@ -77,32 +77,25 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
 
   return (
     <>
-      {/* Floating Toggle Button when Collapsed */}
-      {isCollapsed && (
-        <button
-          onClick={() => setIsCollapsed(false)}
-          className="fixed right-4 top-20 z-40 glass-panel px-3.5 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-100 hover:text-blue-500 transition-all border border-slate-200/80 dark:border-slate-800"
-          title="Buka Panel Analisa"
-        >
-          <ChevronLeft size={16} />
-          <span>Panel Analisa AI</span>
-          {analysis && (
-            <span
-              className="w-2.5 h-2.5 rounded-full inline-block"
-              style={{ backgroundColor: getColorForRainfall(analysis.rainfall_mm) }}
-            />
-          )}
-        </button>
-      )}
+      {/* Google Maps-style attached collapse toggle */}
+      <button
+        onClick={() => setIsCollapsed((collapsed) => !collapsed)}
+        className="fixed top-1/2 z-50 flex h-14 w-7 -translate-y-1/2 items-center justify-center rounded-l-md border border-r-0 border-gray-200 bg-white text-[#202124] shadow-md transition-[right] duration-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+        style={{ right: isCollapsed ? 0 : 'min(410px, 100vw)' }}
+        title={isCollapsed ? 'Buka Panel Analisa' : 'Sembunyikan Panel Analisa'}
+        aria-label={isCollapsed ? 'Buka Panel Analisa' : 'Sembunyikan Panel Analisa'}
+      >
+        {isCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+      </button>
 
-      {/* Main Slide-out Panel */}
+      {/* Full-height right panel */}
       <aside
-        className={`fixed top-4 right-4 bottom-4 z-40 w-full sm:w-[410px] max-w-[calc(100vw-32px)] glass-panel rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 border border-slate-200/70 dark:border-slate-800/80 backdrop-blur-xl ${
-          isCollapsed ? 'translate-x-[440px] pointer-events-none opacity-0' : 'translate-x-0 opacity-100'
+        className={`sidebar-surface fixed inset-y-0 right-0 z-40 flex h-screen w-full flex-col overflow-hidden border-l border-gray-200 bg-white shadow-2xl transition-transform duration-300 ease-in-out dark:border-slate-800 dark:bg-slate-950 sm:w-[410px] ${
+          isCollapsed ? 'translate-x-full pointer-events-none' : 'translate-x-0'
         }`}
       >
         {/* Panel Header & Search Bar */}
-        <div className="p-3.5 pb-2.5 border-b border-slate-200/60 dark:border-slate-800/70 bg-slate-900/5 dark:bg-slate-900/30">
+        <div className="p-3.5 pb-2.5 border-b border-gray-200 dark:border-slate-800/70 bg-white dark:bg-slate-900/30">
           <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-radar-pulse" />
@@ -111,13 +104,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               </span>
             </div>
 
-            <button
-              onClick={() => setIsCollapsed(true)}
-              className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-500/10 rounded-lg transition-colors"
-              title="Sembunyikan Panel"
-            >
-              <ChevronRight size={18} />
-            </button>
           </div>
 
           {/* Search Bar with Shortcut Indicator */}
@@ -134,7 +120,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-                className="w-full pl-9 pr-16 py-2 rounded-xl text-xs bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                className="w-full pl-9 pr-16 py-2 rounded-xl text-xs bg-white dark:bg-slate-800/90 border border-gray-200 dark:border-slate-700/80 text-[#202124] dark:text-slate-100 placeholder-[#5F6368] dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
               />
               <div className="absolute right-2 flex items-center gap-1">
                 <kbd
@@ -465,7 +451,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
         </div>
 
         {/* BOTTOM PANEL CONTROLS: Theme Toggle Switch */}
-        <div className="p-3 border-t border-slate-200/60 dark:border-slate-800/70 bg-slate-900/5 dark:bg-slate-900/30 flex items-center justify-between text-xs">
+        <div className="p-3 border-t border-gray-200 dark:border-slate-800/70 bg-white dark:bg-slate-900/30 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
               Tema Tampilan:

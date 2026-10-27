@@ -19,6 +19,7 @@ import { HeatmapLegend } from './HeatmapLegend';
 import { MapControls } from './MapControls';
 import { SearchModal } from './SearchModal';
 import { TopStatusPill } from './TopStatusPill';
+import { Attribution } from './Attribution';
 
 // Dynamically import LeafletMap with SSR disabled
 const LeafletMap = dynamic(
@@ -160,7 +161,6 @@ export const MapDashboard: React.FC = () => {
         <LeafletMap
           features={features}
           selectedGridId={selectedGridId}
-          onSelectFeature={(gridId) => setSelectedGridId(gridId)}
           basemap={basemap}
           theme={theme}
           timeHorizon={timeHorizon}
@@ -176,31 +176,30 @@ export const MapDashboard: React.FC = () => {
         <TopStatusPill highRiskCount={highRiskCount} />
       </header>
 
-      {/* 3. Bottom-Right Controls & Heatmap Legend */}
-      <div className="absolute bottom-4 right-4 sm:right-6 z-30 flex flex-col items-end gap-2.5 max-w-[calc(100vw-32px)] sm:max-w-md">
-        {/* Map View Controls (Zoom, Layers, Basemap) */}
-        <div className="self-end">
-          <MapControls
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-            onResetView={handleResetView}
-            basemap={basemap}
-            onChangeBasemap={(b) => setBasemap(b)}
-            layers={layers}
-            onToggleLayer={handleToggleLayer}
-          />
-        </div>
-
-        {/* NOAA-Inspired Heatmap Legend */}
-        <div className="w-full sm:w-84">
-          <HeatmapLegend
-            activeRainThreshold={activeRainThreshold}
-            onSelectThreshold={(t) => setActiveRainThreshold(t)}
-          />
-        </div>
+      {/* 3. Center-left map controls */}
+      <div className="absolute left-4 top-1/2 z-30 -translate-y-1/2">
+        <MapControls
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetView={handleResetView}
+          basemap={basemap}
+          onChangeBasemap={(b) => setBasemap(b)}
+          layers={layers}
+          onToggleLayer={handleToggleLayer}
+        />
       </div>
 
-      {/* 4. Right Sidebar (Floating / Slide-out Panel) */}
+      {/* 4. Minimal heatmap legend above the source attribution */}
+      <div className="absolute bottom-12 left-3 z-30">
+        <HeatmapLegend
+          activeRainThreshold={activeRainThreshold}
+          onSelectThreshold={(t) => setActiveRainThreshold(t)}
+        />
+      </div>
+
+      <Attribution />
+
+      {/* 5. Right Sidebar (Floating / Slide-out Panel) */}
       <RightSidebar
         analysis={analysis}
         isLoading={false}
@@ -214,7 +213,7 @@ export const MapDashboard: React.FC = () => {
         onOpenSearchModal={() => setIsSearchOpen(true)}
       />
 
-      {/* 5. Spotlight Search Modal (⌘F / Ctrl+K) */}
+      {/* 6. Spotlight Search Modal (⌘F / Ctrl+K) */}
       <SearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
