@@ -1,0 +1,7 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+
+Pawang_Prediction_Model/data/raw/
+Pawang_Prediction_Model/data/external/

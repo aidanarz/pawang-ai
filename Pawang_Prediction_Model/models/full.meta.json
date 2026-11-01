@@ -1,0 +1,125 @@
+{
+  "mode": "full",
+  "algo": "logistic",
+  "unit": "kecamatan",
+  "rain_source": "openmeteo",
+  "model_version": "full-logistic-202610271529",
+  "trained_at": "2026-10-27T15:29:10",
+  "features": [
+    "rain_d0",
+    "rain_d1",
+    "rain_3d",
+    "rain_7d",
+    "rain_14d",
+    "rain_30d",
+    "rain_max_7d",
+    "wet_days_7d",
+    "month_sin",
+    "month_cos",
+    "elev_mean",
+    "elev_min",
+    "elev_std",
+    "elev_rel_3km",
+    "tma_max",
+    "tma_pct",
+    "tma_delta1",
+    "tma_max_3d"
+  ],
+  "split_scheme": "tahun: train<2019, val=2019, test=2020",
+  "n_train": 14933,
+  "n_val": 13633,
+  "n_test": 13323,
+  "best_iteration": 0,
+  "scale_pos_weight": null,
+  "calibration": {
+    "kind": "sigmoid",
+    "params": {
+      "a": 0.277318257301508,
+      "b": -3.8443446484215076
+    }
+  },
+  "thresholds": {
+    "medium": 0.00805695471741912,
+    "high": 0.03310525949815136
+  },
+  "metrics_val": {
+    "n": 13633,
+    "n_pos": 210,
+    "prevalence": 0.015403799603902295,
+    "pr_auc": 0.04259097070406006,
+    "roc_auc": 0.6169857706920956,
+    "brier": 0.015076118615381691,
+    "at_medium": {
+      "threshold": 0.00805695471741912,
+      "tp": 189,
+      "fp": 11362,
+      "fn": 21,
+      "precision": 0.016362219721236256,
+      "recall": 0.9,
+      "f1": 0.03214012413910382
+    },
+    "at_high": {
+      "threshold": 0.03310525949815136,
+      "tp": 34,
+      "fp": 294,
+      "fn": 176,
+      "precision": 0.10365853658536585,
+      "recall": 0.1619047619047619,
+      "f1": 0.12639405204460966
+    }
+  },
+  "metrics_test": {
+    "n": 13323,
+    "n_pos": 353,
+    "prevalence": 0.026495534038880133,
+    "pr_auc": 0.2863227361206884,
+    "roc_auc": 0.883975004422933,
+    "brier": 0.02486032674850605,
+    "at_medium": {
+      "threshold": 0.00805695471741912,
+      "tp": 352,
+      "fp": 11697,
+      "fn": 1,
+      "precision": 0.029214042659141837,
+      "recall": 0.9971671388101983,
+      "f1": 0.056765037897113374
+    },
+    "at_high": {
+      "threshold": 0.03310525949815136,
+      "tp": 213,
+      "fp": 793,
+      "fn": 140,
+      "precision": 0.2117296222664016,
+      "recall": 0.603399433427762,
+      "f1": 0.31346578366445915
+    }
+  },
+  "baseline_test_pr_auc": {
+    "rain_3d_ranking": 0.11789510365482929,
+    "logistic_regression": 0.28358357697625525
+  },
+  "feature_importance_gain": {
+    "tma_pct": 0.788312499158932,
+    "month_sin": 0.7133296800905768,
+    "elev_min": 0.5882905465869797,
+    "elev_mean": 0.48557585566857925,
+    "tma_max_3d": 0.45065790346511997,
+    "tma_max": 0.4232176900526385,
+    "month_cos": 0.4082470264521371,
+    "rain_7d": 0.401798538823575,
+    "tma_delta1": 0.2762150528416387,
+    "rain_14d": 0.1870395830410172,
+    "rain_d1": 0.1767743796013605,
+    "elev_rel_3km": 0.16354490786381817,
+    "rain_d0": 0.1151563556978307,
+    "rain_max_7d": 0.10367553847648063,
+    "wet_days_7d": 0.07441941359804417,
+    "rain_3d": 0.045130632558196666,
+    "rain_30d": 0.03143444924282436,
+    "elev_std": 0.030130501899180786
+  },
+  "params": {
+    "C": 0.01
+  },
+  "rainfall_only_pr_auc_on_same_rows": 0.1344400884578712
+}

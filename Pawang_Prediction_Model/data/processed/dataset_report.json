@@ -1,0 +1,16 @@
+{
+  "rows": 482328,
+  "dropped_incomplete_window": 0,
+  "flood_rows": 2558,
+  "cells": 264,
+  "years": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020
+  ],
+  "match_rate": 0.9916,
+  "events_matched": 2558,
+  "rows_bad_date": 69
+}

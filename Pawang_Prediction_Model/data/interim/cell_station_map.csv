@@ -1,0 +1,265 @@
+cell_id,station_id,station_km
+cengkareng|cengkareng barat,pompa tanjungan,3.5904406281982655
+cengkareng|cengkareng timur,pompa tanjungan,4.040348653727184
+cengkareng|duri kosambi,ps angke hulu,6.045045785312129
+cengkareng|kapuk,pompa kali duri kalijodo,4.041761831692638
+cengkareng|kedaung kali angke,pompa kali duri kalijodo,3.6968296972752763
+cengkareng|rawa buaya,pompa tanjungan,6.384254718392144
+grogol petamburan|grogol,pompa cideng,1.861193213911475
+grogol petamburan|jelambar,pompa kali duri kalijodo,1.95810330441457
+grogol petamburan|jelambar baru,pompa kali duri kalijodo,0.834235154111281
+grogol petamburan|tanjung duren selatan,pompa cideng,2.081072093111164
+grogol petamburan|tanjung duren utara,pompa cideng,2.567575172152897
+grogol petamburan|tomang,pompa cideng,1.119812771530772
+grogol petamburan|wijaya kesuma,pompa kali duri kalijodo,2.1331415255786745
+kali deres|kalideres,pompa tanjungan,5.647279133003501
+kali deres|kamal,pompa tanjungan,2.8721550583170217
+kali deres|pegadungan,pompa tanjungan,3.8316302475234894
+kali deres|prepedan,pompa tanjungan,2.8589251204356114
+kali deres|semanan,ps angke hulu,6.08418209448353
+kali deres|tegal alur,pompa tanjungan,1.490517598348712
+kebon jeruk|duri kepa,pompa cideng,3.6176002230773303
+kebon jeruk|kebon jeruk,p a karet,4.2088436314871265
+kebon jeruk|kedoya selatan,pompa cideng,5.220335125725935
+kebon jeruk|kedoya utara,pompa kali duri kalijodo,4.319455360638183
+kebon jeruk|kelapa dua,p a karet,4.752166005711654
+kebon jeruk|sukabumi selatan,p a karet,4.975926752471159
+kebon jeruk|sukabumi utara,p a karet,3.794595897089191
+kembangan|joglo,ps angke hulu,4.955873357378326
+kembangan|kembangan selatan,ps angke hulu,6.228949255142071
+kembangan|kembangan utara,pompa kali duri kalijodo,6.254090157504356
+kembangan|meruya selatan,ps angke hulu,4.516108367349507
+kembangan|meruya utara,ps angke hulu,5.545638911511979
+kembangan|srengseng,p a karet,6.145313895786575
+palmerah|jati pulo,pompa cideng,0.6766460823593378
+palmerah|kemanggisan,p a karet,2.251845090671495
+palmerah|kota bambu selatan,p a karet,1.3894836646438018
+palmerah|kota bambu utara,pompa cideng,1.1926794231116102
+palmerah|palmerah,p a karet,2.3102942658236683
+palmerah|slipi,p a karet,1.0570989783958793
+taman sari|glodok,pompa pasar ikan,2.1310226440497724
+taman sari|keagungan,p a jembatan merah,2.219837289773031
+taman sari|krukut,pompa cideng,2.010330225618305
+taman sari|mangga besar,p a jembatan merah,1.8299575742825815
+taman sari|maphar,p a jembatan merah,1.608595727928112
+taman sari|pinangsia,pompa pasar ikan,1.3874413047244036
+taman sari|taman sari,p a jembatan merah,1.1669766739711958
+taman sari|tangki,p a jembatan merah,1.2735706879170687
+tambora|angke,pompa kali duri kalijodo,0.6877718199364591
+tambora|duri selatan,pompa cideng,1.5895672773235558
+tambora|duri utara,pompa kali duri kalijodo,2.0874225802819
+tambora|jembatan besi,pompa kali duri kalijodo,1.3360483431414931
+tambora|jembatan lima,pompa kali duri kalijodo,1.500045217523567
+tambora|kalianyar,pompa cideng,1.9146474524592563
+tambora|krendang,pompa kali duri kalijodo,1.739035166965599
+tambora|pekojan,pompa pasar ikan,1.403936473820757
+tambora|roa malaka,pompa pasar ikan,1.1388100167235748
+tambora|tambora,pompa kali duri kalijodo,2.052478711084578
+tambora|tanah sereal,pompa cideng,2.221623834913629
+cempaka putih|cempaka putih barat,pa manggarai,3.5330833187270474
+cempaka putih|cempaka putih timur,pompa yos sudarso 1,2.7703827637389464
+cempaka putih|rawa sari,pa manggarai,2.732671961301369
+gambir|cideng,pompa cideng,0.21411139550459676
+gambir|duri pulo,pompa cideng,1.1167119465224138
+gambir|gambir,p a istiqlal,1.042428394949727
+gambir|kebon kelapa,p a istiqlal,0.8834024092823833
+gambir|petojo selatan,pompa cideng,1.1184791813595867
+gambir|petojo utara,pompa cideng,1.319028465332484
+johar baru|galur,p a istiqlal,2.787673266789744
+johar baru|johar baru,pa manggarai,2.6336163560973485
+johar baru|kampung rawa,p a istiqlal,2.9642785503739875
+johar baru|tanah tinggi,p a istiqlal,2.3171487439833416
+kemayoran|cempaka baru,pompa yos sudarso 1,2.9253239227383707
+kemayoran|gunung sahari selatan,p a jembatan merah,1.6118782930195619
+kemayoran|harapan mulya,p a istiqlal,2.7160173709626148
+kemayoran|kebon kosong,p a jembatan merah,2.3630878335696206
+kemayoran|kemayoran,p a istiqlal,1.5963667259798908
+kemayoran|serdang,pompa yos sudarso 1,2.7773108596267826
+kemayoran|sumur batu,pompa yos sudarso 1,1.8752749560957434
+kemayoran|utan panjang,p a istiqlal,2.5550017291271505
+menteng|cikini,pa manggarai,2.0621584340262817
+menteng|gondangdia,p a karet,2.2464939392136705
+menteng|kebon sirih,p a istiqlal,1.8796375566376256
+menteng|menteng,pa manggarai,1.787086536866646
+menteng|pegangsaan,pa manggarai,0.6439003123842644
+sawah besar|gunung sahari utara,p a jembatan merah,0.4610419174579064
+sawah besar|karang anyar,p a jembatan merah,0.8138371757283617
+sawah besar|kartini,p a jembatan merah,0.46251262088032824
+sawah besar|mangga dua selatan,p a jembatan merah,1.022292106529314
+sawah besar|pasar baru,p a istiqlal,0.4120506866689404
+senen|bungur,p a istiqlal,1.8488940893661063
+senen|kenari,pa manggarai,1.6045578991532525
+senen|kramat,p a istiqlal,2.359419159166476
+senen|kwitang,p a istiqlal,1.923529542423373
+senen|paseban,pa manggarai,1.665092740442647
+senen|senen,p a istiqlal,1.2597062771671523
+tanah abang|bendungan hilir,p a karet,1.1967193016962032
+tanah abang|gelora,p a karet,2.254618122475017
+tanah abang|kampung bali,p a karet,1.5478629315550039
+tanah abang|karet tengsin,p a karet,1.2427451199520863
+tanah abang|kebon kacang,p a karet,1.1410249337988525
+tanah abang|kebon melati,p a karet,0.6593748291975797
+tanah abang|petamburan,p a karet,0.472394667034594
+cilandak|cilandak barat,ps krukut hulu,5.9378909854170026
+cilandak|cipete selatan,p a hek,7.431173682331146
+cilandak|gandaria selatan,ps krukut hulu,8.135214519296284
+cilandak|lebak bulus,ps krukut hulu,5.270345381782364
+cilandak|pondok labu,ps krukut hulu,3.8501920276584003
+jagakarsa|ciganjur,ps krukut hulu,1.3642358052906551
+jagakarsa|cipedak,ps krukut hulu,1.1560278759883345
+jagakarsa|jagakarsa,ps krukut hulu,3.0667391735728344
+jagakarsa|lenteng agung,ps krukut hulu,4.662837094389835
+jagakarsa|srengseng sawah,ps krukut hulu,2.8760819293414652
+jagakarsa|tanjung barat,p a hek,3.351250780748274
+kebayoran baru|cipete utara,p a karet,7.12074996335742
+kebayoran baru|gandaria utara,p a karet,6.99356486316884
+kebayoran baru|gunung,p a karet,4.646251015969631
+kebayoran baru|kramat pela,p a karet,5.56757564236216
+kebayoran baru|melawai,p a karet,5.37417668385084
+kebayoran baru|petogogan,p a karet,5.037547868708134
+kebayoran baru|pulo,p a karet,6.223879116578903
+kebayoran baru|rawa barat,p a karet,4.289799096650592
+kebayoran baru|selong,p a karet,4.085310734661393
+kebayoran baru|senayan,p a karet,3.2146965602625723
+kebayoran lama|cipulir,p a karet,6.04592853740657
+kebayoran lama|grogol selatan,p a karet,4.705644027277607
+kebayoran lama|grogol utara,p a karet,3.3374510504313117
+kebayoran lama|kebayoran lama selatan,p a karet,7.117626452334833
+kebayoran lama|kebayoran lama utara,p a karet,6.505398927629968
+kebayoran lama|pondok pinang,ps krukut hulu,7.849118715141987
+mampang prapatan|bangka,p a hek,6.387919087350189
+mampang prapatan|kuningan barat,pa manggarai,4.274088835425996
+mampang prapatan|mampang prapatan,ps kp melayu,4.349504604540446
+mampang prapatan|pela mampang,p a karet,5.6771299662149115
+mampang prapatan|tegal parang,ps kp melayu,4.640120885154878
+pancoran|cikoko,ps kp melayu,2.406625481474039
+pancoran|duren tiga,ps kp melayu,4.641541339726524
+pancoran|kalibata,p a hek,4.519305575323512
+pancoran|pancoran,ps kp melayu,3.550157435068962
+pancoran|pengadegan,ps kp melayu,2.8003781026402343
+pancoran|rawajati,p a hek,3.698688168635006
+pasar minggu|cilandak timur,ps krukut hulu,6.058609470059623
+pasar minggu|jati padang,p a hek,4.385799037393381
+pasar minggu|kebagusan,p a hek,5.058969991081793
+pasar minggu|pasar minggu,p a hek,3.468449741359174
+pasar minggu|pejaten barat,p a hek,4.237735864089826
+pasar minggu|pejaten timur,p a hek,2.595398222572631
+pasar minggu|ragunan,p a hek,5.59889996296687
+pesanggrahan|bintaro,ps krukut hulu,9.053888228670944
+pesanggrahan|pesanggrahan,ps angke hulu,8.195544930422331
+pesanggrahan|petukangan selatan,ps angke hulu,7.077041723343324
+pesanggrahan|petukangan utara,ps angke hulu,6.363072379310704
+pesanggrahan|ulujami,p a karet,6.7376082997389615
+setia budi|guntur,pa manggarai,1.690612041602103
+setia budi|karet,pa manggarai,2.4896672997238984
+setia budi|karet kuningan,pa manggarai,2.655264084800344
+setia budi|karet semanggi,p a karet,2.865869788838487
+setia budi|kuningan timur,pa manggarai,3.373369714147315
+setia budi|menteng atas,pa manggarai,1.451155439775035
+setia budi|pasar manggis,pa manggarai,0.812833130369615
+setia budi|setia budi,p a karet,2.042240568317602
+tebet|bukit duri,ps kp melayu,0.8348391716815795
+tebet|kebon baru,ps kp melayu,0.9337946128336665
+tebet|manggarai,pa manggarai,0.6959250647402654
+tebet|manggarai selatan,pa manggarai,1.3529105182139398
+tebet|menteng dalam,ps kp melayu,2.6355466910129968
+tebet|tebet barat,ps kp melayu,1.9800838830959637
+tebet|tebet timur,ps kp melayu,1.3226469784429973
+cakung|cakung barat,pa pulo gadung,3.903097878624643
+cakung|cakung timur,pa pulo gadung,6.084445359855687
+cakung|jatinegara,pa pulo gadung,1.9101784296983626
+cakung|penggilingan,pa pulo gadung,3.723297446719648
+cakung|pulo gebang,pa pulo gadung,5.621027329889109
+cakung|rawa terate,pa pulo gadung,1.929464500137415
+cakung|ujung menteng,pa pulo gadung,6.359329437625802
+cipayung|bambu apus,ps sunter hulu,2.130575749496915
+cipayung|ceger,ps sunter hulu,3.2945140788635485
+cipayung|cilangkap,ps sunter hulu,2.2322053169542126
+cipayung|cipayung,ps sunter hulu,3.2372219447475836
+cipayung|lubang buaya,ps sunter hulu,3.2936102179679776
+cipayung|munjul,ps cipinang hulu,3.2003604194097552
+cipayung|pondok ranggon,ps cipinang hulu,3.3606954819346
+cipayung|setu,ps sunter hulu,0.8668684739094343
+ciracas|cibubur,ps cipinang hulu,1.934589051339332
+ciracas|ciracas,p a hek,4.329418052172401
+ciracas|kelapa dua wetan,ps cipinang hulu,3.694698310006994
+ciracas|rambutan,p a hek,2.281916345756472
+ciracas|susukan,p a hek,2.9140714139323727
+duren sawit|duren sawit,pa pulo gadung,4.8832581230219025
+duren sawit|klender,pa pulo gadung,3.1064406294197515
+duren sawit|malaka jaya,pa pulo gadung,4.9575981967521
+duren sawit|malaka sari,pa pulo gadung,4.5083298910478495
+duren sawit|pondok bambu,ps kp melayu,4.196803960299107
+duren sawit|pondok kelapa,pa pulo gadung,6.565734337327646
+duren sawit|pondok kopi,pa pulo gadung,5.822126537854043
+jatinegara|bali mester,ps kp melayu,0.7300650456678006
+jatinegara|bidara cina,ps kp melayu,1.0981718979384345
+jatinegara|cipinang besar selatan,ps kp melayu,1.8803494774219118
+jatinegara|cipinang besar utara,ps kp melayu,1.8611118579750616
+jatinegara|cipinang cempedak,ps kp melayu,1.61397887815162
+jatinegara|cipinang muara,ps kp melayu,2.754907700236416
+jatinegara|kampung melayu,ps kp melayu,0.8442328438423422
+jatinegara|rawa bunga,ps kp melayu,1.007942948174838
+kramat jati|bale kambang,p a hek,2.0800901791296984
+kramat jati|batu ampar,p a hek,1.4173186862342566
+kramat jati|cawang,ps kp melayu,2.8052418709323628
+kramat jati|cililitan,p a hek,2.840413511674713
+kramat jati|dukuh,p a hek,1.2630599179527924
+kramat jati|kampung tengah,p a hek,0.5157856185377486
+kramat jati|kramat jati,p a hek,1.4458479343710595
+makasar|cipinang melayu,ps kp melayu,5.329334232154484
+makasar|halim perdana kusumah,p a hek,3.459982133521342
+makasar|kebon pala,p a hek,3.5543807766192086
+makasar|makasar,p a hek,1.502589952710899
+makasar|pinang ranti,p a hek,1.5856268134048395
+matraman|kayu manis,pa manggarai,1.6192700257337784
+matraman|kebon manggis,pa manggarai,0.757786100200683
+matraman|pal meriem,pa manggarai,1.2476634984888375
+matraman|pisangan baru,ps kp melayu,1.644129426527638
+matraman|utan kayu selatan,pa manggarai,2.3175251424632983
+matraman|utan kayu utara,pa manggarai,2.5593811082541373
+pasar rebo|baru,p a hek,4.894924546800966
+pasar rebo|cijantung,p a hek,4.027591224138295
+pasar rebo|gedong,p a hek,1.9494476921465713
+pasar rebo|kalisari,ps cipinang hulu,5.537756333480919
+pasar rebo|pekayon,ps cipinang hulu,3.882757662382495
+pulo gadung|cipinang,pa pulo gadung,2.342782371407547
+pulo gadung|jati,pa pulo gadung,0.8948423124856754
+pulo gadung|jatinegara kaum,pa pulo gadung,1.3176777690858945
+pulo gadung|kayu putih,pa pulo gadung,2.6112875244829867
+pulo gadung|pisangan timur,ps kp melayu,2.581350924344934
+pulo gadung|pulo gadung,pa pulo gadung,1.0633552540126436
+pulo gadung|rawamangun,pa pulo gadung,2.4732564981955294
+cilincing|cilincing,ps marunda laut,2.718983598805241
+cilincing|kali baru,ps marunda laut,5.422353752042923
+cilincing|marunda,ps marunda laut,1.0430117727535195
+cilincing|rorotan,ps marunda laut,4.259817504601471
+cilincing|semper barat,ps marunda laut,5.332183961349438
+cilincing|semper timur,ps marunda laut,4.214402634167665
+cilincing|suka pura,pompa yos sudarso 1,4.703441236724999
+danau sunter|danau sunter,p a jembatan merah,2.692302737991475
+danau sunter dll|danau sunter dll,p a jembatan merah,1.2621760871090457
+kelapa gading|kelapa gading barat,pompa yos sudarso 1,1.0271795029442707
+kelapa gading|kelapa gading timur,pompa yos sudarso 1,2.4104167901835676
+kelapa gading|pegangsaan dua,pa pulo gadung,3.2019437447125623
+koja|koja,pompa yos sudarso 1,5.717663145381077
+koja|lagoa,pompa yos sudarso 1,5.3634152509836
+koja|rawabadak selatan,pompa yos sudarso 1,3.019276922365795
+koja|rawabadak utara,pompa yos sudarso 1,4.202639837865434
+koja|tugu selatan,pompa yos sudarso 1,3.4922359913289625
+koja|tugu utara,pompa yos sudarso 1,4.511433918658348
+pademangan|ancol,p a marina ancol,0.40681997765726347
+pademangan|pademangan barat,p a ancol flusing,0.8278714919280233
+pademangan|pademangan timur,p a jembatan merah,1.7421834640766602
+penjaringan|kamal muara,pompa tanjungan,1.2657549124800564
+penjaringan|kapuk muara,pompa kali duri kalijodo,3.740945413285007
+penjaringan|pejagalan,pompa kali duri kalijodo,0.9518768651405402
+penjaringan|penjaringan,p a pluit,1.2005045120844662
+penjaringan|pluit,p a pluit,1.2183891439574468
+tanjung priok|kebon bawang,pompa yos sudarso 1,4.040298344998117
+tanjung priok|papango,pompa yos sudarso 1,3.372795199264532
+tanjung priok|sungai bambu,pompa yos sudarso 1,2.762076622269535
+tanjung priok|sunter agung,pompa yos sudarso 1,3.2837464546731074
+tanjung priok|sunter jaya,pompa yos sudarso 1,1.121607414057258
+tanjung priok|tanjung priuk,pompa yos sudarso 1,5.2582028628734925
+tanjung priok|warakas,pompa yos sudarso 1,3.8585044692377592

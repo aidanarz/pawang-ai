@@ -1,0 +1,125 @@
+{
+  "mode": "full",
+  "algo": "logistic",
+  "unit": "kecamatan",
+  "rain_source": "imerg",
+  "model_version": "full-logistic-202610271529",
+  "trained_at": "2026-10-27T15:29:22",
+  "features": [
+    "rain_d0",
+    "rain_d1",
+    "rain_3d",
+    "rain_7d",
+    "rain_14d",
+    "rain_30d",
+    "rain_max_7d",
+    "wet_days_7d",
+    "month_sin",
+    "month_cos",
+    "elev_mean",
+    "elev_min",
+    "elev_std",
+    "elev_rel_3km",
+    "tma_max",
+    "tma_pct",
+    "tma_delta1",
+    "tma_max_3d"
+  ],
+  "split_scheme": "tahun: train<2019, val=2019, test=2020",
+  "n_train": 14933,
+  "n_val": 13633,
+  "n_test": 13323,
+  "best_iteration": 0,
+  "scale_pos_weight": null,
+  "calibration": {
+    "kind": "sigmoid",
+    "params": {
+      "a": 0.36396237331698916,
+      "b": -3.8391119158725036
+    }
+  },
+  "thresholds": {
+    "medium": 0.007041395172109608,
+    "high": 0.03620955098957467
+  },
+  "metrics_val": {
+    "n": 13633,
+    "n_pos": 210,
+    "prevalence": 0.015403799603902295,
+    "pr_auc": 0.04954492982202641,
+    "roc_auc": 0.6472508097331162,
+    "brier": 0.015010721113391964,
+    "at_medium": {
+      "threshold": 0.007041395172109608,
+      "tp": 189,
+      "fp": 10875,
+      "fn": 21,
+      "precision": 0.017082429501084597,
+      "recall": 0.9,
+      "f1": 0.033528472591804144
+    },
+    "at_high": {
+      "threshold": 0.03620955098957467,
+      "tp": 54,
+      "fp": 528,
+      "fn": 156,
+      "precision": 0.09278350515463918,
+      "recall": 0.2571428571428571,
+      "f1": 0.13636363636363635
+    }
+  },
+  "metrics_test": {
+    "n": 13323,
+    "n_pos": 353,
+    "prevalence": 0.026495534038880133,
+    "pr_auc": 0.3316474725943306,
+    "roc_auc": 0.8812089786628983,
+    "brier": 0.02403944608102815,
+    "at_medium": {
+      "threshold": 0.007041395172109608,
+      "tp": 350,
+      "fp": 10634,
+      "fn": 3,
+      "precision": 0.03186453022578296,
+      "recall": 0.9915014164305949,
+      "f1": 0.0617447296462909
+    },
+    "at_high": {
+      "threshold": 0.03620955098957467,
+      "tp": 242,
+      "fp": 1167,
+      "fn": 111,
+      "precision": 0.1717530163236338,
+      "recall": 0.6855524079320113,
+      "f1": 0.2746878547105562
+    }
+  },
+  "baseline_test_pr_auc": {
+    "rain_3d_ranking": 0.19387815696879812,
+    "logistic_regression": 0.3068049237411056
+  },
+  "feature_importance_gain": {
+    "month_sin": 0.8764691736354356,
+    "tma_pct": 0.7716973168607387,
+    "elev_min": 0.6588630003858159,
+    "month_cos": 0.5946445364170393,
+    "wet_days_7d": 0.5526307925475775,
+    "elev_mean": 0.48856431721979676,
+    "tma_max_3d": 0.46727925732437514,
+    "tma_max": 0.3848561813628351,
+    "rain_7d": 0.277971479447296,
+    "tma_delta1": 0.25571028321647665,
+    "rain_d1": 0.17172373809472588,
+    "rain_d0": 0.16844453826787265,
+    "elev_rel_3km": 0.14433629158719993,
+    "rain_14d": 0.10759234856303998,
+    "rain_max_7d": 0.08432387483160561,
+    "rain_30d": 0.05708582952569659,
+    "rain_3d": 0.02736968573330261,
+    "elev_std": 0.015917872637349877
+  },
+  "params": {
+    "C": 0.01
+  },
+  "rainfall_only_pr_auc_on_same_rows": 0.24070638977122943
+}
