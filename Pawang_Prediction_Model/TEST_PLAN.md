@@ -1,8 +1,5 @@
 # Test Plan: Pawang AI Flood Prediction Model
 
-Draft. Scope: `src/` pipeline, training, inference (`FloodPredictor`) and the models in `models/`.
-Numbers come from [TRAINING_RESULTS.md](TRAINING_RESULTS.md).
-
 ## 1. Objectives
 
 1. The pipeline runs end to end, and features match between training and inference.
@@ -10,7 +7,6 @@ Numbers come from [TRAINING_RESULTS.md](TRAINING_RESULTS.md).
 3. Inference is safe for the backend: it never guesses missing values and fails loudly on bad input.
 4. Changes to data, code, or hyperparameters do not silently degrade the model.
 
-Out of scope: the frontend, and external servers (Open-Meteo, NASA, Satu Data).
 
 ## 2. Scope under test
 
@@ -28,7 +24,7 @@ Production setup: kecamatan unit (44), logistic regression (`C = 0.01`), sigmoid
 | Level | Focus | Status |
 |---|---|---|
 | Unit | date and name parsing, rain and TMA features, JSON round-trip, calibration, aggregation | Done |
-| Integration | synthetic data → dataset → train → predict, chronological split, both algorithms | Done |
+| Integration | synthetic data -> dataset -> train - > predict, chronological split, both algorithms | Done |
 | Contract | output schema, per-row fallback, reject incomplete input, training/inference parity | Done |
 | Data validation (real data) | schema, label counts, coverage, duplicates | Planned |
 | Model evaluation (real data) | CV, baselines, calibration, leakage | Manual / Planned |
@@ -56,7 +52,7 @@ Priority: **P1** before the backend uses the model, **P2** next iteration.
 | M1 | Beats random | PR-AUC ≥ 2× prevalence on every CV fold | P1 |
 | M2 | Beats rainfall baseline | PR-AUC above 3-day rainfall ranking (2020: 0.132 vs 0.108) | P1 |
 | M3 | Stable across years | Mean CV ROC-AUC ≥ 0.70, no fold below 0.55 | P1 |
-| M4 | Leakage check | Shuffle labels per year → PR-AUC falls to about prevalence | P1 |
+| M4 | Leakage check | Shuffle labels per year -> PR-AUC falls to about prevalence | P1 |
 | M5 | Calibration | Brier ≤ prevalence-only Brier; reliability table by decile | P1 |
 | M6 | Threshold stability | Report shift when the validation year changes | P2 |
 | M7 | Algorithm comparison | Logistic not worse than XGBoost by more than 0.03 mean CV PR-AUC | P2 |
@@ -69,9 +65,9 @@ Protocol: chronological split (train 2016–2018, validation 2019, test 2020) pl
 |---|---|---|---|
 | I1 | Output bounds | `p_flood` in [0, 1] or NaN; `risk_level` in low/medium/high/unknown | P1 |
 | I2 | Threshold boundary | `p` equal to a threshold maps to the higher class | P1 |
-| I3 | Determinism | Same input → same output; row order does not matter | P1 |
-| I4 | `strict=False` | Incomplete rows → NaN and `unknown`; other rows unaffected | P1 |
-| I5 | Model files vs `meta.json` | Loader follows `algo`; no models → `FileNotFoundError` | P1 |
+| I3 | Determinism | Same input -> same output; row order does not matter | P1 |
+| I4 | `strict=False` | Incomplete rows -> NaN and `unknown`; other rows unaffected | P1 |
+| I5 | Model files vs `meta.json` | Loader follows `algo`; no models -> `FileNotFoundError` | P1 |
 | F1 | Rainfall above training maximum | Probability stays in [0, 1], non-decreasing | P2 |
 | F2 | TMA station rename (datum shift) | `tma_pct` stays in [0, 1], warning on large jump | P2 |
 | F3 | IMERG/CHIRPS HTTP 401/403/429 | Download stops cleanly, cache kept | P2 |
@@ -94,10 +90,3 @@ Protocol: chronological split (train 2016–2018, validation 2019, test 2020) pl
 | Labels incomplete: unreported floods count as 0 | Documented limit |
 | Training rainfall is reanalysis, inference uses forecasts | Manual check once forecast archives exist |
 
-## 7. Environment
-
-Python 3.12, `requirements.txt`, `.venv`. Tests are offline. Fetch scripts need internet; IMERG needs `EARTHDATA_TOKEN` in `.env`. Planned CI: GitHub Actions runs `python -m pytest` on every push. Model evaluation (4.2) stays manual because it needs the real data.
-
-## 8. Exit criteria
-
-Ready for backend use when all P1 tests are Done or have a recorded result, M1–M5 pass on current data, and `TRAINING_RESULTS.md` reports CV mean and range together with the risks in section 6.
