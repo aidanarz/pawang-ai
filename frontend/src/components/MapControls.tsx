@@ -28,6 +28,8 @@ interface MapControlsProps {
     radarPulse: boolean;
   };
   onToggleLayer: (layer: keyof MapControlsProps['layers']) => void;
+  /** True when the map shows real backend data. Layers that only exist as demo data are then switched off. */
+  hasRealData: boolean;
 }
 
 export const MapControls: React.FC<MapControlsProps> = ({
@@ -38,6 +40,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
   onChangeBasemap,
   layers,
   onToggleLayer,
+  hasRealData,
 }) => {
   const [showBasemapMenu, setShowBasemapMenu] = useState(false);
   const [showLayersMenu, setShowLayersMenu] = useState(false);
@@ -133,6 +136,11 @@ export const MapControls: React.FC<MapControlsProps> = ({
             <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 pb-1 border-b border-slate-200 dark:border-slate-800">
               Layer Aktif
             </div>
+            {hasRealData && (
+              <div className="mb-2 text-[10px] leading-tight text-amber-600 dark:text-amber-400">
+                Pintu air, posko, dan radar dimatikan: belum ada sumber data nyata untuk layer ini.
+              </div>
+            )}
             <div className="space-y-2">
               <label className="flex items-center justify-between text-xs cursor-pointer hover:bg-slate-500/10 p-1.5 rounded-lg transition-colors">
                 <span className="flex items-center gap-2">
@@ -154,7 +162,8 @@ export const MapControls: React.FC<MapControlsProps> = ({
                 </span>
                 <input
                   type="checkbox"
-                  checked={layers.waterGates}
+                  checked={layers.waterGates && !hasRealData}
+                  disabled={hasRealData}
                   onChange={() => onToggleLayer('waterGates')}
                   className="rounded text-blue-600 focus:ring-blue-500"
                 />
@@ -167,7 +176,8 @@ export const MapControls: React.FC<MapControlsProps> = ({
                 </span>
                 <input
                   type="checkbox"
-                  checked={layers.evacuation}
+                  checked={layers.evacuation && !hasRealData}
+                  disabled={hasRealData}
                   onChange={() => onToggleLayer('evacuation')}
                   className="rounded text-blue-600 focus:ring-blue-500"
                 />
@@ -180,7 +190,8 @@ export const MapControls: React.FC<MapControlsProps> = ({
                 </span>
                 <input
                   type="checkbox"
-                  checked={layers.radarPulse}
+                  checked={layers.radarPulse && !hasRealData}
+                  disabled={hasRealData}
                   onChange={() => onToggleLayer('radarPulse')}
                   className="rounded text-blue-600 focus:ring-blue-500"
                 />

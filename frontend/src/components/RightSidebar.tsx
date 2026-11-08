@@ -18,13 +18,14 @@ import {
   MapPin,
   PhoneCall,
 } from 'lucide-react';
-import { AreaAnalysisResponse, TimeHorizon } from '@/data/types';
+import { AreaAnalysisResponse, GeoJSONGridFeature, TimeHorizon } from '@/data/types';
 import { getRiskBadgeClasses, getSiagaBadgeClasses, getColorForRainfall } from '@/utils/colorScale';
 import { HydrographChart } from './HydrographChart';
-import { BASE_FLOOD_ZONES } from '@/data/floodData';
 
 interface RightSidebarProps {
   analysis: AreaAnalysisResponse | null;
+  /** Areas currently on the map (the search box looks through these). */
+  features: GeoJSONGridFeature[];
   isLoading: boolean;
   timeHorizon: TimeHorizon;
   onChangeTimeHorizon: (horizon: TimeHorizon) => void;
@@ -36,6 +37,7 @@ interface RightSidebarProps {
 
 export const RightSidebar: React.FC<RightSidebarProps> = ({
   analysis,
+  features,
   isLoading,
   timeHorizon,
   onChangeTimeHorizon,
@@ -49,7 +51,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // Filter locations for search bar dropdown
-  const filteredLocations = BASE_FLOOD_ZONES.filter((zone) =>
+  const filteredLocations = features.filter((zone) =>
     zone.properties.area_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     zone.properties.district.toLowerCase().includes(searchQuery.toLowerCase()) ||
     zone.properties.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -274,10 +276,12 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 <p className="min-h-[72px] text-justify text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium p-2.5 border-y border-gray-200 dark:border-gray-700/50">
                   {isNoRisk
                     ? 'Kondisi wilayah terpantau aman. Tidak terdapat probabilitas presipitasi maupun indikasi genangan air pada area ini untuk rentang waktu perkiraan.'
+                    : analysis.risk_level === 'Unknown'
+                    ? 'Data masukan belum lengkap, sehingga risiko banjir daerah ini tidak dapat dihitung.'
                     : analysis.risk_level === 'Extreme'
                     ? `PERINGATAN KRITIS: Adanya kemungkinan banjir parah pada daerah ini pada ${timeHorizon} berikutnya akibat limpasan air kiriman dan intensitas hujan tinggi.`
                     : analysis.risk_level === 'High'
-                    ? `Adanya kemungkinan banjir sedang hingga tinggi pada daerah ini pada ${timeHorizon} berikutnya dengan estimasi genangan ${analysis.inundation_range}.`
+                    ? `Adanya kemungkinan banjir sedang hingga tinggi pada daerah ini pada ${timeHorizon} berikutnya${analysis.inundation_range && analysis.inundation_range !== 'Belum tersedia' ? ` dengan estimasi genangan ${analysis.inundation_range}` : ''}.`
                     : analysis.risk_level === 'Medium'
                     ? `Adanya potensi genangan air sedang pada cekungan jalan dan saluran drainase dalam rentang ${timeHorizon} ke depan.`
                     : `Kondisi daerah terpantau aman dan stabil dalam rentang ${timeHorizon} ke depan dengan risiko banjir minimal.`}

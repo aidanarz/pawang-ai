@@ -19,6 +19,7 @@ import pandas as pd
 
 from .areas import AreaCatalog, Kecamatan
 from .config import Settings
+from .waterlevel import BpbdWaterLevel, TmaStore, WaterLevelError
 
 UTC = dt.timezone.utc
 OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -36,6 +37,7 @@ class ToolResult:
     error: str | None = None
     attempts: int = 1
     elapsed_ms: int = 0
+    extra: dict = field(default_factory=dict)   # tool-specific side data (e.g. latest siaga per station)
 
     def summary(self) -> dict:
         """Compact, JSON-safe view for the audit log and for prompts (no raw tables)."""
@@ -81,6 +83,8 @@ class ToolRegistry:
         self.catalog = catalog
         self.http = http or httpx.Client(timeout=20.0)
         self._tma_history: pd.DataFrame | None = None
+        self.tma_live = BpbdWaterLevel(settings.tma_url, TmaStore(settings.tma_store_path), http=self.http,
+                                       min_interval_s=settings.tma_min_interval_s)
 
     # ---- capabilities: what Agent 1 is allowed to plan with -------------------------------------
     def capabilities(self) -> dict[str, dict]:
@@ -89,9 +93,9 @@ class ToolRegistry:
             "resolve_area": {"available": True},
             "get_weather_forecast": {"available": True, "source": "open-meteo-forecast" if live else "archive-replay"},
             "get_water_level": {
-                "available": not live,  # the live BPBD collector is not built yet
-                "source": "archive-replay" if not live else None,
-                "note": None if not live else "no live water-level source configured",
+                "available": (not live) or self.s.tma_live_enabled,
+                "source": "archive-replay" if not live else ("bpbd-scrape" if self.s.tma_live_enabled else None),
+                "note": None if (not live or self.s.tma_live_enabled) else "no live water-level source configured",
             },
             "get_static_features": {"available": True, "source": "model-files"},
         }
@@ -169,8 +173,7 @@ class ToolRegistry:
     def get_water_level(self, station_ids: list[str], target_date: dt.date) -> ToolResult:
         """Daily maximum water level (cm) per station for the 3 days ending on target_date."""
         if self.s.data_mode != "replay":
-            return ToolResult("get_water_level", ok=False, source="none",
-                              error="no live water-level source configured (BPBD collector not built yet)")
+            return self._water_level_live(station_ids, target_date)
         if self._tma_history is None:
             p = Path(self.s.interim_dir) / "tma_daily.csv"
             self._tma_history = pd.read_csv(p, parse_dates=["date"]) if p.exists() else pd.DataFrame()
@@ -182,6 +185,26 @@ class ToolRegistry:
         d = d[["station_id", "date", "tma_max"]].reset_index(drop=True)
         return ToolResult("get_water_level", ok=True, source="archive-replay", data=d,
                           covers_until=d["date"].max().date() if len(d) else None)
+
+    def _water_level_live(self, station_ids: list[str], target_date: dt.date) -> ToolResult:
+        """BPBD page -> history -> daily maximum per model station. A failed fetch is not fatal if the history still
+        holds recent readings: Agent 3 judges their age (data_as_of) and decides whether they are fresh enough."""
+        if not self.s.tma_live_enabled:
+            return ToolResult("get_water_level", ok=False, source="none",
+                              error="no live water-level source configured (PAWANG_TMA_LIVE=false)")
+        refresh_error = None
+        try:
+            self.tma_live.refresh()
+        except WaterLevelError as exc:
+            refresh_error = str(exc)
+        data, as_of, extra = self.tma_live.daily(station_ids, target_date)
+        if data.empty:
+            return ToolResult("get_water_level", ok=False, source="bpbd-scrape",
+                              error=refresh_error or "no stored BPBD readings for these stations on the target days")
+        if refresh_error:
+            extra = {**extra, "refresh_error": refresh_error}
+        return ToolResult("get_water_level", ok=True, source="bpbd-scrape", data=data, data_as_of=as_of,
+                          covers_until=data["date"].max().date(), extra=extra)
 
     # ---- 4. get_static_features --------------------------------------------------------------------
     @_timed

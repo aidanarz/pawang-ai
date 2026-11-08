@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pawang AI: Frontend
 
-## Getting Started
+Next.js dashboard (Leaflet map + analysis sidebar). It shows flood predictions from the FastAPI backend in
+[`../backend`](../backend), which calls the trained model in [`../Pawang_Prediction_Model`](../Pawang_Prediction_Model).
 
-First, run the development server:
+## Run the whole demo (backend + frontend)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+From the repository root, in PowerShell:
+
+```powershell
+cd frontend; npm install; cd ..        # first time only
+.\scripts\run-demo.ps1                 # archive replay of 2020-02-25: no internet, no Qwen
+.\scripts\run-demo.ps1 -Live -Qwen     # live Open-Meteo forecast + Qwen agents (needs Ollama)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>. Ctrl+C stops both servers. The script refuses to start if port 8000 or 3000 is taken.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Manual start (two terminals):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```powershell
+# backend/
+$env:PAWANG_DATA_MODE="replay"; $env:QWEN_ENABLED="false"; python -m uvicorn app.main:app --port 8000
+# frontend/
+$env:PAWANG_DEMO_DATE="2020-02-25"; npm run dev
+```
 
-## Learn More
+## How the UI gets its data
 
-To learn more about Next.js, take a look at the following resources:
+The browser calls the Next.js routes `/api/v1/heatmap`, `/api/v1/analysis` and `/api/v1/status`; they forward to the
+backend (`src/lib/backend.ts`). The banner under the status pill always says what you are looking at:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Banner | Meaning |
+| --- | --- |
+| "Prediksi model" / "Data arsip (replay)" + date | Real output of the flood model. In replay mode a date picker selects the archive day; the 1h-24h buttons have no effect there. |
+| "Data belum tersedia" (red) | Backend is up but has no data for that day. The map is cleared; nothing is made up. |
+| "Backend tidak terhubung" (amber) | Backend is down. Built-in demo data is shown instead, which is NOT a model prediction. |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Map colour = the model's flood probability per kecamatan, scaled between the lowest and highest area on screen (the legend
+shows both values). Water-gate, shelter and radar-ring layers only exist as demo data, so they are switched off whenever real
+data is shown. Fields the backend has no source for (siaga level, peak time, inundation range, evacuation route) show
+"Belum tersedia".
 
-## Deploy on Vercel
+## Settings (server-side environment variables)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `PAWANG_BACKEND_URL` | `http://127.0.0.1:8000` | Where the FastAPI backend runs (use `127.0.0.1`, not `localhost`: Node resolves `localhost` to IPv6) |
+| `PAWANG_DEMO_DATE` | none | First archive day shown in replay mode (YYYY-MM-DD) |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Checks
+
+```bash
+npm run typecheck && npm run lint && npm test
+```

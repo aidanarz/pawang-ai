@@ -67,6 +67,16 @@ class Settings:
     # "ollama" = Ollama native /api/chat (thinking off, JSON forced); "openai" = /v1/chat/completions (vLLM etc.)
     llm_api_style: str = field(default_factory=lambda: os.environ.get("QWEN_API_STYLE", "ollama"))
 
+    # Live water level scraped from the BPBD DKI Jakarta page (app/waterlevel.py). Used only in live mode.
+    tma_live_enabled: bool = field(default_factory=lambda: _bool("PAWANG_TMA_LIVE", True))
+    tma_url: str = field(default_factory=lambda: os.environ.get("PAWANG_TMA_URL", "https://bpbd.jakarta.go.id/waterlevel"))
+    tma_store_path: Path = field(default_factory=lambda: Path(
+        os.environ.get("PAWANG_TMA_STORE", str(BACKEND_DIR / "data" / "tma_live.csv"))))
+    tma_min_interval_s: float = field(default_factory=lambda: float(os.environ.get("PAWANG_TMA_MIN_INTERVAL_S", "300")))
+    # > 0: a background thread fetches every N seconds so history builds up even when nobody calls the API
+    # (the model needs yesterday's level). 0 = fetch only when a request needs it.
+    tma_poll_s: float = field(default_factory=lambda: float(os.environ.get("PAWANG_TMA_POLL_S", "0")))
+
     # Audit log (one JSON line per request): the raw material for log audits and agent training
     audit_dir: Path = field(default_factory=lambda: Path(
         os.environ.get("PAWANG_AUDIT_DIR", str(BACKEND_DIR / "logs"))))

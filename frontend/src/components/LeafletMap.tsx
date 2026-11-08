@@ -7,17 +7,14 @@ import {
   GeoJSONGridFeature,
   WaterGateStation,
   EvacuationCenter,
-  TimeHorizon,
 } from '@/data/types';
-import { getDenseHeatPoints } from '@/data/floodData';
+import { colorAreas } from '@/utils/areaColors';
 import { JAKARTA_ADMIN_BOUNDARY } from '@/data/jakartaBoundary';
-import 'leaflet.heat';
 
 interface LeafletMapProps {
   features: GeoJSONGridFeature[];
   markerPosition: [number, number] | null;
   basemap: BasemapType;
-  timeHorizon: TimeHorizon;
   layers: {
     heatmap: boolean;
     waterGates: boolean;
@@ -26,7 +23,6 @@ interface LeafletMapProps {
   };
   waterGates: WaterGateStation[];
   evacuationCenters: EvacuationCenter[];
-  activeRainThreshold: number | null;
   onSelectGrid: (gridId: string, position?: [number, number]) => void;
 }
 
@@ -84,11 +80,9 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   features,
   markerPosition,
   basemap,
-  timeHorizon,
   layers,
   waterGates,
   evacuationCenters,
-  activeRainThreshold,
   onSelectGrid,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -96,7 +90,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   const onSelectGridRef = useRef(onSelectGrid);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
-  const heatLayerRef = useRef<L.HeatLayer | null>(null);
+  const areaLayerRef = useRef<L.FeatureGroup | null>(null);
   const jakartaBoundaryLayerRef = useRef<L.GeoJSON | null>(null);
   const waterGatesLayerRef = useRef<L.LayerGroup | null>(null);
   const evacLayerRef = useRef<L.LayerGroup | null>(null);
@@ -109,16 +103,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   //   zoom 11 → ~28px radius  (reference / default view)
   //   zoom 13 → ~55px radius
   //   zoom 15 → ~75px radius  (hard cap)
-  const BASE_RADIUS = 28;
-  const BASE_BLUR = 20;
-  const REFERENCE_ZOOM = 11;
-  const MAX_RADIUS = 75;
-  const MAX_BLUR = 50;
-  const getZoomRadius = (zoom: number) =>
-    Math.round(Math.min(MAX_RADIUS, Math.max(8, BASE_RADIUS * Math.pow(1.4, zoom - REFERENCE_ZOOM))));
-  const getZoomBlur = (zoom: number) =>
-    Math.round(Math.min(MAX_BLUR, Math.max(5, BASE_BLUR * Math.pow(1.4, zoom - REFERENCE_ZOOM))));
-
   useEffect(() => {
     featuresRef.current = features;
   }, [features]);
@@ -212,12 +196,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       window.removeEventListener('pawang:zoomout', handleZoomOut);
       window.removeEventListener('pawang:reset', handleReset);
       map.off('dblclick', handleMapDoubleClick);
-      if (heatLayerRef.current) {
-        if (map.hasLayer(heatLayerRef.current)) {
-          map.removeLayer(heatLayerRef.current);
-        }
-        heatLayerRef.current = null;
-      }
+      areaLayerRef.current = null;
       map.remove();
       mapInstanceRef.current = null;
       jakartaBoundaryLayerRef.current = null;
@@ -277,70 +256,34 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     tileLayerRef.current = newTileLayer;
   }, [basemap]);
 
-  // 3. Render the official leaflet.heat flood-probability layer.
+  // 3. Flood-probability layer: one colour per area from the model's probability (see colorAreas).
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    if (!layers.heatmap) {
-      if (heatLayerRef.current) {
-        if (map.hasLayer(heatLayerRef.current)) {
-          map.removeLayer(heatLayerRef.current);
-        }
-        heatLayerRef.current = null;
-      }
-      return;
+    if (areaLayerRef.current) {
+      map.removeLayer(areaLayerRef.current);
+      areaLayerRef.current = null;
     }
+    if (!layers.heatmap) return;
 
-    const rawPoints = getDenseHeatPoints(timeHorizon);
-    const filteredPoints = activeRainThreshold
-      ? rawPoints.filter((p) => p[2] * 35 >= activeRainThreshold)
-      : rawPoints;
-
-    const zoom = map.getZoom();
-    const currentRadius = getZoomRadius(zoom);
-    const currentBlur = getZoomBlur(zoom);
-
-    const heatOptions = {
-      radius: currentRadius,
-      blur: currentBlur,
-      minOpacity: 0.18,
-      max: 1.0,
-      gradient: {
-        0.35: '#22C55E',
-        0.55: '#EAB308',
-        0.75: '#FACC15',
-        0.9: '#EF4444',
-        1.0: '#B91C1C',
-      },
-    };
-
-    if (heatLayerRef.current && map.hasLayer(heatLayerRef.current)) {
-      heatLayerRef.current.setLatLngs(filteredPoints);
-      heatLayerRef.current.setOptions(heatOptions);
-    } else {
-      heatLayerRef.current = null;
-      heatLayerRef.current = L.heatLayer(filteredPoints, heatOptions).addTo(map);
-    }
-
+    const group = L.featureGroup();
+    colorAreas(features).forEach(({ feature, color }) => {
+      // GeoJSON is [lng, lat]; Leaflet wants [lat, lng]. interactive:false keeps map clicks for area selection.
+      const ring = feature.geometry.coordinates[0].map(([lng, lat]) => [lat, lng] as [number, number]);
+      L.polygon(ring, {
+        color,
+        weight: 1,
+        opacity: 0.8,
+        fillColor: color,
+        fillOpacity: 0.55,
+        interactive: false,
+      }).addTo(group);
+    });
+    group.addTo(map);
+    areaLayerRef.current = group;
     jakartaBoundaryLayerRef.current?.bringToFront();
-
-    // Keep radius in sync with zoom so heatmap stays geographically consistent.
-    const onZoomEnd = () => {
-      if (!heatLayerRef.current || !map.hasLayer(heatLayerRef.current)) return;
-      const z = map.getZoom();
-      heatLayerRef.current.setOptions({
-        radius: getZoomRadius(z),
-        blur: getZoomBlur(z),
-      });
-      jakartaBoundaryLayerRef.current?.bringToFront();
-    };
-
-    map.on('zoomend', onZoomEnd);
-    return () => {
-      map.off('zoomend', onZoomEnd);
-    };
-  }, [timeHorizon, layers.heatmap, activeRainThreshold]);
+  }, [features, layers.heatmap]);
 
   // 4. River Water Gate Stations (Pintu Air / Stream Gauges)
   useEffect(() => {

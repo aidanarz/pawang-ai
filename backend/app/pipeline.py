@@ -21,6 +21,7 @@ from .audit import AuditLog
 from .cache import TTLCache
 from .config import Settings
 from .llm import LLM
+from .waterlevel import SIAGA_RANK
 from .tools import ToolRegistry, ToolResult
 
 
@@ -34,6 +35,7 @@ class AreaResult:
     confidence: str            # HIGH | LOW
     rainfall_mm: float | None  # target-day rainfall (unit mean), the same value the model saw
     water_level_cm: float | None
+    siaga_level: str | None = None   # worst live siaga label among the area's stations (live BPBD only)
 
 
 @dataclass
@@ -158,6 +160,7 @@ class Pipeline:
         kf = P.build_kelurahan_features(fp, areas, target_date, rain, tma)
         out = P.predict(fp, kf, mode="auto" if tma is not None else "rainfall_only")
         units = P.unit_inputs(kf, fp).set_index("cell_id")
+        siaga = results["get_water_level"].extra.get("siaga", {}) if tma is not None else {}
         res.rain, res.water_level = rain, tma
         for a in areas:
             row = out[out["cell_id"] == a.cell_id]
@@ -172,4 +175,5 @@ class Pipeline:
                 confidence="HIGH" if (mode == "full" and rain_v.ok and tma_v.ok) else "LOW",
                 rainfall_mm=_f(u["rain_d0"]) if u is not None else None,
                 water_level_cm=_f(u["tma_max"]) if u is not None and "tma_max" in u.index else None,
+                siaga_level=max((siaga[s] for s in a.station_ids if s in siaga), key=SIAGA_RANK.get, default=None),
             ))

@@ -41,9 +41,11 @@ class FakeLLM:
 
 @pytest.fixture
 def replay_settings(tmp_path) -> Settings:
-    return Settings(data_mode="replay", llm_enabled=False, audit_dir=tmp_path / "logs")
+    return Settings(data_mode="replay", llm_enabled=False, audit_dir=tmp_path / "logs",
+                    tma_store_path=tmp_path / "tma.csv")
 
 
 @pytest.fixture
 def live_settings(tmp_path) -> Settings:
-    return Settings(data_mode="live", llm_enabled=False, audit_dir=tmp_path / "logs")
+    return Settings(data_mode="live", llm_enabled=False, audit_dir=tmp_path / "logs",
+                    tma_store_path=tmp_path / "tma.csv")

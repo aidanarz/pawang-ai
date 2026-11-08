@@ -8,6 +8,7 @@ Pawang_Prediction_Model/data/external/
 
 # backend
 backend/logs/
+backend/data/
 .pytest_cache/
 CLAUDE.local.md
 backend/eval/results/

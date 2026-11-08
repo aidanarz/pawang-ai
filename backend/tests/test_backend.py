@@ -85,6 +85,8 @@ def _open_meteo(days_back=40, days_fwd=3, fail_first=0):
     times = [(today + dt.timedelta(days=i)).isoformat() for i in range(-days_back, days_fwd)]
 
     def handler(req: httpx.Request) -> httpx.Response:
+        if req.url.host == "bpbd.jakarta.go.id":      # live water level (BPBD): not Open-Meteo, not counted here
+            return httpx.Response(503, text="down")
         state["n"] += 1
         if state["n"] <= fail_first:
             return httpx.Response(500, json={"error": True})
@@ -352,3 +354,13 @@ def test_iso_date_in_text_is_not_an_invented_number():
              "commuter_advisory": "Diperkirakan tidak hujan pada 2020-08-10. Lanjutkan perjalanan seperti biasa."}
     d = AdviceWriter(FakeLLM({"advice_writer": reply})).write(f)
     assert d.decided_by == "qwen", d.llm.guardrail_errors
+
+
+def test_health_reports_replay_date_range(replay_settings):
+    h = client(replay_settings).get("/api/v1/health").json()
+    r = h["replay_dates"]
+    assert r["min"] <= "2020-02-25" <= r["max"]
+
+
+def test_health_has_no_replay_range_in_live_mode(live_settings):
+    assert client(live_settings).get("/api/v1/health").json()["replay_dates"] is None

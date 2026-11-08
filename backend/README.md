@@ -14,6 +14,7 @@ request -> cache -> Agent 1 (which tools?) -> Tool Registry -> Agent 3 (fresh? c
 | `app/main.py` | Backend FastAPI request handler (`/api/v1/heatmap`, `/api/v1/analysis`, `/api/v1/health`) |
 | `app/pipeline.py` | Main flow (3.1 d), confidence label HIGH/LOW |
 | `app/agents.py` | Agent 1 Data Fetch Orchestrator, Agent 3 Freshness Checker, Agent 2 Failure Handler, advice writer |
+| `app/waterlevel.py` | BPBD page scraper, post -> model-station mapping, hourly history store |
 | `app/tools.py` | Tool Registry: `resolve_area`, `get_weather_forecast`, `get_water_level`, `get_static_features` |
 | `app/llm.py` | Self-hosted Qwen client (any OpenAI-compatible server) |
 | `app/guardrails.py` | Checks on every Qwen output (allowed tools/actions, no invented numbers, no certainty claims) |
@@ -25,11 +26,14 @@ request -> cache -> Agent 1 (which tools?) -> Tool Registry -> Agent 3 (fresh? c
 
 ## Run
 
+Backend and frontend together: `.\scripts\run-demo.ps1` from the repository root (see `frontend/README.md`).
+Backend only:
+
 ```bash
 cd backend
 pip install -r requirements.txt
 copy .env.example .env            # Windows (Linux/macOS: cp)
-python -m pytest                  # 25 tests, no network or GPU needed
+python -m pytest                  # 58 tests, no network or GPU needed
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
@@ -79,14 +83,52 @@ evaluating or training the agents.
   frontend team: there is no rule for `Extreme` yet, so it is never returned.
 - Fields with no data source yet (`duration_est`, `peak_time`, `inundation_range`, `siaga_level`,
   `evacuation_route`, `affected_roads`, `safe_shelters`, `confidence_score`) are `null` or empty, never made up.
-- Polygons are approximate squares around each kecamatan centroid until boundary polygons are added.
+- Polygons are the real kecamatan boundaries (`metadata.geometry = "admin"`), read from
+  `Pawang_Prediction_Model/models/kecamatan_boundaries.geojson`. If that file is missing the backend draws
+  approximate squares and says so (`"approximate"`). Rebuild the file with `python -m src.build_boundaries`
+  (needs `data/external/idn_admin_boundaries.gdb.zip` from HDX `cod-ab-idn`, same source as `build_centroids`).
+  A kecamatan made of separate parts is drawn with its largest part only (Tanjung Priok loses 0.5% of its area).
+- `siaga_level` is filled from the live BPBD page (`Normal`, `Siaga 3`, `Siaga 2`, `Siaga 1`, worst of the kecamatan's
+  stations) and is `null` in replay mode.
 - Data unavailable -> HTTP 503 with `{"status": "data_unavailable", "message": ...}`.
+
+## Live water level (BPBD)
+
+In live mode `get_water_level` reads <https://bpbd.jakarta.go.id/waterlevel> (public page, robots.txt allows it).
+One request returns all 12 posts for today (hourly, cm). The backend caches it for 5 minutes, identifies itself with a
+`PawangAI` user agent, and appends every fetch to `backend/data/tma_live.csv` (git-ignored, 10 days kept).
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `PAWANG_TMA_LIVE` | `true` | `false` turns the scraper off (live mode then runs the rainfall-only model) |
+| `PAWANG_TMA_POLL_S` | `0` | `> 0`: a background thread fetches every N seconds. Set `1800` for a real deployment so history builds up |
+| `PAWANG_TMA_MIN_INTERVAL_S` | `300` | Minimum seconds between two requests to BPBD |
+| `PAWANG_TMA_STORE` / `PAWANG_TMA_URL` | see `config.py` | History file / page address |
+
+What to know:
+
+- **Ten of the twelve posts feed the model** (`BPBD_TO_MODEL` in `app/waterlevel.py`). "Pos Depok" has no model station and
+  "Pasar Ikan - Laut" is a sea gauge, not the pump station the model learned. Of 44 kecamatan, those whose nearest
+  model station is one of the ten get a live level (28 at the time of testing); the others stay rainfall-only.
+- **The page has no history.** The model needs yesterday's level (`tma_delta1`, `tma_max_3d`), so on a fresh install every
+  area runs the rainfall-only model (confidence LOW) until the store holds the previous day. Run with
+  `PAWANG_TMA_POLL_S=1800`, or leave the server up for a day, before expecting the full model. Nothing is guessed.
+- **Today's `tma_max` is the maximum so far today**; the model was trained on complete days. Early in the day it can read
+  lower than the model's training distribution.
+- **Only for today.** Water level exists only for the current day (WIB). A target day in the future has no reading, so it
+  falls back to rainfall-only (Agent 3 reports `missing`, Agent 2 chooses the fallback).
+- **Values were checked against training data:** today's BPBD value of each mapped post lies inside that station's training
+  range, close to its median (e.g. Manggarai 540 cm vs median 609, Pluit -180 vs -176), so unit and datum agree.
+- **Layout changes are detected:** if the table disappears or has no readable values the parser raises and the pipeline
+  falls back; `/api/v1/health` shows `tma_live.last_error`.
+- **Terms of use:** this reads a public page at a low rate for flood early warning. Check BPBD's terms before heavy or
+  commercial use, and prefer an official data feed if BPBD offers one.
 
 ## Known gaps (from the design document)
 
 | Document says | Now | Why / next step |
 |---|---|---|
 | Rainfall from BMKG API | Open-Meteo forecast | The model was trained on Open-Meteo; the same provider keeps inputs consistent. BMKG can be added as a second source after its unit and grid are checked. |
-| Water level from Google Flood Hub | Archive replay only; live returns "not configured" | The model's water-level features come from Jakarta's DSDA stations in cm, which Flood Hub does not provide. A live BPBD collector is the next task. |
+| Water level from Google Flood Hub | Live: scraped from the BPBD DKI page (`app/waterlevel.py`); replay: archive | The model's water-level features come from Jakarta's gauges in cm, which Flood Hub does not provide. BPBD reports the same kind of gauges in the same unit. See "Live water level" below for the limits. |
 | PostgreSQL + PostGIS static features | Model CSV files | Same data; move to PostGIS when the DB schema is ready. |
 | Redis cache | In-memory | Same interface; swap when deployed on a server. |

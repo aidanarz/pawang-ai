@@ -7,13 +7,12 @@ import {
   BasemapType,
   GeoJSONGridFeature,
   AreaAnalysisResponse,
+  BackendStatus,
+  DataSource,
+  HeatmapGeoJSONResponse,
 } from '@/data/types';
-import {
-  WATER_GATE_STATIONS,
-  EVACUATION_CENTERS,
-  BASE_FLOOD_ZONES,
-  getAnalysisForGrid,
-} from '@/data/floodData';
+import { WATER_GATE_STATIONS, EVACUATION_CENTERS } from '@/data/floodData';
+import { DataSourceBanner } from './DataSourceBanner';
 import { RightSidebar } from './RightSidebar';
 import { HeatmapLegend } from './HeatmapLegend';
 import { MapControls } from './MapControls';
@@ -37,17 +36,22 @@ const LeafletMap = dynamic(
 
 export const MapDashboard: React.FC = () => {
   // App States
-  const [selectedGridId, setSelectedGridId] = useState<string>('JKT-KML-01');
+  const [selectedGridId, setSelectedGridId] = useState<string | null>(null);
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
   const [timeHorizon, setTimeHorizon] = useState<TimeHorizon>('5h');
-  const [features, setFeatures] = useState<GeoJSONGridFeature[]>(BASE_FLOOD_ZONES);
-  const [analysis, setAnalysis] = useState<AreaAnalysisResponse | null>(() =>
-    getAnalysisForGrid('JKT-KML-01')
-  );
+  const [features, setFeatures] = useState<GeoJSONGridFeature[]>([]);
+  const [analysis, setAnalysis] = useState<AreaAnalysisResponse | null>(null);
   const [basemap, setBasemap] = useState<BasemapType>('dark');
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
-  const [activeRainThreshold, setActiveRainThreshold] = useState<number | null>(null);
+
+  // Data source: 'loading' until the first heatmap answer, then 'backend' (model) or 'mock' (demo data).
+  const [dataSource, setDataSource] = useState<DataSource>('loading');
+  const [status, setStatus] = useState<BackendStatus | null>(null);
+  const [targetDate, setTargetDate] = useState<string | null>(null);
+  const [unavailableMessage, setUnavailableMessage] = useState<string | null>(null);
+  // Archive day for replay mode. Null in live mode (the backend derives the day from the time horizon).
+  const [archiveDate, setArchiveDate] = useState<string | null>(null);
 
   const [layers, setLayers] = useState({
     heatmap: true,
@@ -56,21 +60,73 @@ export const MapDashboard: React.FC = () => {
     radarPulse: true,
   });
 
+  const hasRealData = dataSource === 'backend';
+
   // Pawang AI uses a single dark dashboard theme.
   useEffect(() => {
     document.documentElement.classList.add('dark');
   }, []);
 
-  // Fetch heatmap data when timeHorizon changes
+  // Ask once whether the backend is up and, in replay mode, which days it can serve.
   useEffect(() => {
+    let isMounted = true;
+    const loadStatus = async () => {
+      let next: BackendStatus = { source: 'mock', data_mode: null, replay_dates: null, demo_date: null };
+      try {
+        const res = await fetch('/api/v1/status');
+        if (res.ok) next = await res.json();
+      } catch (err) {
+        console.error('Error fetching backend status:', err);
+      }
+      if (!isMounted) return;
+      if (next.data_mode === 'replay' && next.replay_dates) {
+        const { min, max } = next.replay_dates;
+        const wanted = next.demo_date ?? max;
+        setArchiveDate(wanted < min ? min : wanted > max ? max : wanted);
+      }
+      setStatus(next);
+    };
+    loadStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Fetch heatmap data when the time horizon or archive day changes (after the status is known)
+  useEffect(() => {
+    if (!status) return;
     let isMounted = true;
     const loadHeatmap = async () => {
       try {
-        const res = await fetch(`/api/v1/heatmap?time=${timeHorizon}`);
-        if (res.ok && isMounted) {
-          const json = await res.json();
-          setFeatures(json.features);
+        const params = new URLSearchParams({ time: timeHorizon });
+        if (archiveDate) params.set('date', archiveDate);
+        const res = await fetch(`/api/v1/heatmap?${params.toString()}`);
+        if (!isMounted) return;
+        if (res.status === 503) {
+          // Backend is up but has no data for this day: say so, and clear the map instead of showing stale areas.
+          const body = await res.json().catch(() => null);
+          if (!isMounted) return;
+          setDataSource('unavailable');
+          setUnavailableMessage(body?.message ?? 'Data tidak tersedia');
+          setFeatures([]);
+          setAnalysis(null);
+          return;
         }
+        if (!res.ok) return;
+        const json: HeatmapGeoJSONResponse = await res.json();
+        const loaded = json.features;
+        setDataSource(res.headers.get('x-pawang-source') === 'backend' ? 'backend' : 'mock');
+        setTargetDate(json.metadata?.target_date ?? null);
+        setFeatures(loaded);
+        // Select the area with the highest flood probability when nothing valid is selected yet
+        // (first load, or an ID that this data source does not have).
+        setSelectedGridId((prev) => {
+          if (loaded.length === 0) return prev;
+          if (prev && loaded.some((f) => f.properties.grid_id === prev)) return prev;
+          return loaded.reduce((a, b) =>
+            (b.properties.flood_probability ?? -1) > (a.properties.flood_probability ?? -1) ? b : a
+          ).properties.grid_id;
+        });
       } catch (err) {
         console.error('Error fetching heatmap:', err);
       }
@@ -79,15 +135,17 @@ export const MapDashboard: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [timeHorizon]);
+  }, [timeHorizon, archiveDate, status]);
 
-  // Fetch analysis data when selectedGridId changes
+  // Fetch analysis data when the selected area, time horizon or archive day changes
   useEffect(() => {
     if (!selectedGridId) return;
     let isMounted = true;
     const loadAnalysis = async () => {
       try {
-        const res = await fetch(`/api/v1/analysis?grid_id=${selectedGridId}`);
+        const params = new URLSearchParams({ grid_id: selectedGridId, time: timeHorizon });
+        if (archiveDate) params.set('date', archiveDate);
+        const res = await fetch(`/api/v1/analysis?${params.toString()}`);
         if (res.ok && isMounted) {
           const json: AreaAnalysisResponse = await res.json();
           setAnalysis(json);
@@ -100,7 +158,7 @@ export const MapDashboard: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [selectedGridId]);
+  }, [selectedGridId, timeHorizon, archiveDate]);
 
   // Forecast Timeline Simulation Loop
   useEffect(() => {
@@ -162,6 +220,17 @@ export const MapDashboard: React.FC = () => {
     (f) => f.properties.risk_level === 'High' || f.properties.risk_level === 'Extreme'
   ).length;
 
+  const probabilities = features
+    .map((f) => f.properties.flood_probability)
+    .filter((p): p is number => Number.isFinite(p));
+  const minProbability = probabilities.length ? Math.min(...probabilities) : null;
+  const maxProbability = probabilities.length ? Math.max(...probabilities) : null;
+
+  // Demo layers (water gates, shelters, radar rings) have no real data source: hide them next to real data.
+  const mapLayers = hasRealData
+    ? { ...layers, waterGates: false, evacuation: false, radarPulse: false }
+    : layers;
+
   return (
     <main className="relative w-screen h-screen overflow-hidden bg-slate-950">
       {/* 1. Fullscreen Base Leaflet Map */}
@@ -170,11 +239,9 @@ export const MapDashboard: React.FC = () => {
           features={features}
           markerPosition={markerPosition}
           basemap={basemap}
-          timeHorizon={timeHorizon}
-          layers={layers}
-          waterGates={WATER_GATE_STATIONS}
-          evacuationCenters={EVACUATION_CENTERS}
-          activeRainThreshold={activeRainThreshold}
+          layers={mapLayers}
+          waterGates={hasRealData ? [] : WATER_GATE_STATIONS}
+          evacuationCenters={hasRealData ? [] : EVACUATION_CENTERS}
           onSelectGrid={handleSelectGrid}
         />
       </div>
@@ -183,6 +250,16 @@ export const MapDashboard: React.FC = () => {
       <header className="absolute top-4 left-1/2 z-30 -translate-x-1/2">
         <TopStatusPill highRiskCount={highRiskCount} />
       </header>
+      <div className="absolute top-16 left-1/2 z-30 -translate-x-1/2">
+        <DataSourceBanner
+          source={dataSource}
+          status={status}
+          targetDate={targetDate}
+          archiveDate={archiveDate}
+          message={unavailableMessage}
+          onChangeArchiveDate={setArchiveDate}
+        />
+      </div>
 
       {/* 3. Center-left map controls */}
       <div className="absolute left-4 top-1/2 z-30 -translate-y-1/2">
@@ -194,15 +271,13 @@ export const MapDashboard: React.FC = () => {
           onChangeBasemap={(b) => setBasemap(b)}
           layers={layers}
           onToggleLayer={handleToggleLayer}
+          hasRealData={hasRealData}
         />
       </div>
 
       {/* 4. Minimal heatmap legend above the source attribution */}
-      <div className="absolute bottom-12 left-3 z-30">
-        <HeatmapLegend
-          activeRainThreshold={activeRainThreshold}
-          onSelectThreshold={(t) => setActiveRainThreshold(t)}
-        />
+      <div className="absolute bottom-14 left-3 z-30">
+        <HeatmapLegend minProbability={minProbability} maxProbability={maxProbability} />
       </div>
 
       <Attribution />
@@ -210,6 +285,7 @@ export const MapDashboard: React.FC = () => {
       {/* 5. Right Sidebar (Floating / Slide-out Panel) */}
       <RightSidebar
         analysis={analysis}
+        features={features}
         isLoading={false}
         timeHorizon={timeHorizon}
         onChangeTimeHorizon={(h) => setTimeHorizon(h)}
@@ -221,6 +297,7 @@ export const MapDashboard: React.FC = () => {
 
       {/* 6. Spotlight Search Modal (⌘F / Ctrl+K) */}
       <SearchModal
+        features={features}
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         onSelectRegion={handleSelectGrid}

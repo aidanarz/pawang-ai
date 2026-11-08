@@ -1,8 +1,8 @@
-export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Extreme';
+export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Extreme' | 'Unknown';
 
 export type TimeHorizon = '1h' | '3h' | '5h' | '12h' | '24h';
 
-export type SiagaLevel = 'Normal' | 'Siaga 4' | 'Siaga 3' | 'Siaga 2' | 'Siaga 1';
+export type SiagaLevel = 'Normal' | 'Siaga 4' | 'Siaga 3' | 'Siaga 2' | 'Siaga 1' | 'Tidak tersedia';
 
 export type BasemapType = 'dark' | 'topographic' | 'osm';
 
@@ -78,6 +78,8 @@ export interface HeatmapGeoJSONResponse {
     center: [number, number];
     total_grids: number;
     high_risk_count: number;
+    /** Set by the backend only: the day the model predicted. */
+    target_date?: string;
   };
 }
 
@@ -103,4 +105,17 @@ export interface AreaAnalysisResponse {
   nearby_stations: WaterGateStation[];
   safe_shelters: EvacuationCenter[];
   last_updated: string;
+}
+
+/** Where the data on screen came from. 'mock' = built-in demo data (backend down or empty). */
+export type DataSource = 'loading' | 'backend' | 'mock' | 'unavailable';
+
+/** GET /api/v1/status: backend reachability and archive (replay) date range. */
+export interface BackendStatus {
+  source: 'backend' | 'mock';
+  data_mode: 'live' | 'replay' | null;
+  /** Archive days the backend can serve in replay mode (YYYY-MM-DD). */
+  replay_dates: { min: string; max: string } | null;
+  /** Server default day (PAWANG_DEMO_DATE) for replay mode. */
+  demo_date: string | null;
 }

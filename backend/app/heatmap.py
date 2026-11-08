@@ -4,8 +4,9 @@ Fields the system has no data for yet (flood duration, peak time, inundation dep
 evacuation routes, shelters, Siaga thresholds) are returned as null or empty lists, never filled with
 made-up values. The frontend should show them as "not available".
 
-Geometry: the repo has no kecamatan boundary polygons yet, so each kecamatan is drawn as a small square
-around its centroid and the response says so (metadata.geometry = "approximate").
+Geometry: each kecamatan uses its real boundary from models/kecamatan_boundaries.geojson (built by
+`python -m src.build_boundaries`, metadata.geometry = "admin"). If that file is missing the kecamatan is drawn as a
+small square around its centroid and the response says so (metadata.geometry = "approximate").
 """
 from __future__ import annotations
 
@@ -26,6 +27,11 @@ def _square(lat: float, lon: float) -> list[list[list[float]]]:
     return [[[round(x, 6), round(y, 6)] for x, y in ring]]
 
 
+def _geometry(a: AreaResult) -> dict:
+    boundary = a.area.boundary
+    return {"type": "Polygon", "coordinates": boundary if boundary else _square(a.area.lat, a.area.lon)}
+
+
 def grid_properties(a: AreaResult) -> dict:
     return {
         "grid_id": a.area.grid_id,
@@ -36,7 +42,7 @@ def grid_properties(a: AreaResult) -> dict:
         "flood_probability": None if a.p_flood is None else round(a.p_flood, 4),
         "rainfall_mm": None if a.rainfall_mm is None else round(a.rainfall_mm, 1),
         "water_level_cm": None if a.water_level_cm is None else round(a.water_level_cm),
-        "siaga_level": None,
+        "siaga_level": a.siaga_level,
         "duration_est": None,
         "peak_time": None,
         "inundation_range": None,
@@ -53,7 +59,7 @@ def grid_properties(a: AreaResult) -> dict:
 
 def heatmap_response(r: PipelineResult, horizon: str, center: tuple[float, float]) -> dict:
     features = [{"type": "Feature", "properties": grid_properties(a),
-                 "geometry": {"type": "Polygon", "coordinates": _square(a.area.lat, a.area.lon)}}
+                 "geometry": _geometry(a)}
                 for a in r.areas]
     return {
         "type": "FeatureCollection",
@@ -67,7 +73,7 @@ def heatmap_response(r: PipelineResult, horizon: str, center: tuple[float, float
             "high_risk_count": sum(a.risk_level == "high" for a in r.areas),
             "status": r.status,
             "message": r.message or None,
-            "geometry": "approximate",
+            "geometry": "admin" if r.areas and all(a.area.boundary for a in r.areas) else "approximate",
             "request_id": r.request_id,
             "cached": r.cached,
         },

@@ -11,6 +11,7 @@ import datetime as dt
 import re
 
 import httpx
+import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -39,6 +40,19 @@ def target_date_for(horizon: str, now: dt.datetime | None = None) -> dt.date:
     return (now.astimezone(WIB) + dt.timedelta(hours=HORIZONS[horizon])).date()
 
 
+def replay_date_range(s: Settings) -> dict | None:
+    """First and last target day that replay mode can serve (archive start + rain_history_days - 1 .. archive end)."""
+    folder = s.interim_dir / "rain"
+    first = next(iter(sorted(folder.glob("*.csv"))), None) if folder.exists() else None
+    if first is None:
+        return None
+    dates = pd.read_csv(first, usecols=["date"], parse_dates=["date"])["date"]
+    if dates.empty:
+        return None
+    lo = dates.min().date() + dt.timedelta(days=s.rain_history_days - 1)
+    return {"min": lo.isoformat(), "max": dates.max().date().isoformat()}
+
+
 def create_app(settings: Settings | None = None, llm: LLM | None = None,
                http: httpx.Client | None = None, audit_enabled: bool = True) -> FastAPI:
     s = settings or get_settings()
@@ -52,6 +66,12 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
                        allow_methods=["GET"], allow_headers=["*"])
     app.state.pipeline = pipeline
+
+    # Optional background poller: builds the water-level history (the model needs yesterday's level) even when nobody
+    # calls the API. Off by default (PAWANG_TMA_POLL_S=0); the demo script turns it on for live mode.
+    if s.data_mode == "live" and s.tma_live_enabled and s.tma_poll_s > 0:
+        tools.tma_live.start_polling(s.tma_poll_s)
+        app.add_event_handler("shutdown", tools.tma_live.stop_polling)
 
     def resolve_date(time: str, date: str | None) -> dt.date:
         if date:
@@ -80,7 +100,9 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
                 "areas": len(catalog.all()), "tools": tools.capabilities(),
                 "llm": {"enabled": s.llm_enabled, "model": s.llm_model, "base_url": s.llm_base_url,
                         "reachable": llm_up},
-                "cache_ttl_s": s.cache_ttl_s}
+                "tma_live": tools.tma_live.status() if s.data_mode == "live" and s.tma_live_enabled else None,
+                "cache_ttl_s": s.cache_ttl_s,
+                "replay_dates": replay_date_range(s) if s.data_mode == "replay" else None}
 
     @app.get("/api/v1/heatmap")
     def heatmap(time: str = "5h", lat: float = -6.2088, lon: float = 106.8456,

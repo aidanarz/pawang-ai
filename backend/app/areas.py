@@ -6,8 +6,9 @@ never disagree with the model about what an area is called or which inputs belon
 """
 from __future__ import annotations
 
+import json
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
@@ -33,6 +34,9 @@ class Kecamatan:
     lat: float
     lon: float
     kelurahan: tuple[Kelurahan, ...]
+    # GeoJSON Polygon coordinates ([exterior, *holes], [lng, lat]) from models/kecamatan_boundaries.geojson;
+    # None when that file is missing (the heatmap then draws an approximate square).
+    boundary: list | None = field(default=None, compare=False, hash=False, repr=False)
 
     @property
     def point_ids(self) -> list[str]:
@@ -54,6 +58,7 @@ class AreaCatalog:
         st_path = models_dir / "cell_station_map.csv"
         stations = pd.read_csv(st_path) if st_path.exists() else pd.DataFrame(columns=["cell_id", "station_id", "station_km"])
         kec = pd.read_csv(models_dir / "static_features.csv")
+        boundaries = self._read_boundaries(models_dir / "kecamatan_boundaries.geojson")
 
         kel = kel.merge(unit, on="cell_id", how="left").merge(stations, on="cell_id", how="left")
         names = kel.groupby("unit")["kecamatan"].first().to_dict()
@@ -74,8 +79,18 @@ class AreaCatalog:
                 cell_id=row["cell_id"], grid_id=to_grid_id(row["cell_id"]),
                 name=str(names.get(row["cell_id"], row["cell_id"].title())),
                 lat=float(row["lat"]), lon=float(row["lon"]), kelurahan=members,
+                boundary=boundaries.get(row["cell_id"]),
             )
         self._by_grid = {k.grid_id: k for k in self._by_cell.values()}
+
+    @staticmethod
+    def _read_boundaries(path: Path) -> dict[str, list]:
+        """cell_id -> Polygon coordinates, from the file written by src.build_boundaries."""
+        if not path.exists():
+            return {}
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        return {f["properties"]["cell_id"]: f["geometry"]["coordinates"]
+                for f in doc["features"] if f["geometry"]["type"] == "Polygon"}
 
     def all(self) -> list[Kecamatan]:
         return sorted(self._by_cell.values(), key=lambda k: k.cell_id)

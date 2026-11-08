@@ -2,16 +2,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, X, ArrowRight, Sparkles } from 'lucide-react';
-import { BASE_FLOOD_ZONES } from '@/data/floodData';
+import type { GeoJSONGridFeature } from '@/data/types';
 import { getColorForRainfall, getRiskBadgeClasses } from '@/utils/colorScale';
 
 interface SearchModalProps {
+  /** Areas currently on the map. */
+  features: GeoJSONGridFeature[];
   isOpen: boolean;
   onClose: () => void;
   onSelectRegion: (gridId: string) => void;
 }
 
 export const SearchModal: React.FC<SearchModalProps> = ({
+  features,
   isOpen,
   onClose,
   onSelectRegion,
@@ -47,7 +50,13 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
   if (!isOpen) return null;
 
-  const filtered = BASE_FLOOD_ZONES.filter((zone) => {
+  const topAreas = [...features]
+    .filter((f) => Number.isFinite(f.properties.flood_probability))
+    .sort((a, b) => b.properties.flood_probability - a.properties.flood_probability)
+    .slice(0, 5)
+    .map((f) => f.properties.area_name);
+
+  const filtered = features.filter((zone) => {
     const q = query.toLowerCase();
     const p = zone.properties;
     return (
@@ -71,7 +80,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
           <input
             ref={inputRef}
             type="text"
-            placeholder="Periksa daerah banjir Jabodetabek (cth: Kemang, Rawajati, Manggarai, Katulampa)..."
+            placeholder="Cari kecamatan (cth: Menteng, Kebayoran Lama, Cakung)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full bg-transparent text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none"
@@ -96,9 +105,9 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         <div className="px-3.5 py-2 bg-slate-900/5 dark:bg-slate-900/30 border-b border-slate-200/40 dark:border-slate-800/40 flex items-center gap-1.5 overflow-x-auto text-[11px]">
           <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0 flex items-center gap-1">
             <Sparkles size={11} className="text-amber-500" />
-            Populer:
+            Risiko tertinggi:
           </span>
-          {['Kemang', 'Kampung Melayu', 'Manggarai', 'Rawajati', 'Pluit', 'Katulampa'].map(
+          {topAreas.map(
             (tag) => (
               <button
                 key={tag}

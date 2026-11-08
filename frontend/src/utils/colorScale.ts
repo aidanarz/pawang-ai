@@ -109,6 +109,14 @@ export function getRiskBadgeClasses(risk: RiskLevel): {
         dot: 'bg-red-600',
         label: 'Extreme Risk',
       };
+    default:
+      return {
+        bg: 'bg-slate-500/15 dark:bg-slate-500/25',
+        text: 'text-slate-600 dark:text-slate-300',
+        border: 'border-slate-400/40',
+        dot: 'bg-slate-400',
+        label: 'Data Tidak Lengkap',
+      };
   }
 }
 
@@ -150,6 +158,12 @@ export function getSiagaBadgeClasses(siaga: SiagaLevel): {
         bg: 'bg-rose-500/20 dark:bg-rose-500/30',
         text: 'text-rose-700 dark:text-rose-300',
         border: 'border-rose-500/50',
+      };
+    default:
+      return {
+        bg: 'bg-slate-500/15 dark:bg-slate-500/25',
+        text: 'text-slate-600 dark:text-slate-300',
+        border: 'border-slate-400/30',
       };
   }
 }

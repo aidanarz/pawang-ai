@@ -35,16 +35,21 @@ export const HydrographChart: React.FC<HydrographChartProps> = ({ data }) => {
 
 
 
+  // Real data (from the backend) is a daily water level (TMA) with date labels. The built-in demo
+  // data is a flood-height series with clock labels and a danger line.
+  const isWaterLevelSeries = /^\d{4}-\d{2}-\d{2}$/.test(data[0].time);
   const maxWaterLevel = Math.max(...data.map((point) => point.waterLevel));
-  const strokeColor =
-    maxWaterLevel >= 100 ? '#EF4444' : maxWaterLevel >= 60 ? '#EAB308' : '#22C55E';
+  const strokeColor = isWaterLevelSeries
+    ? '#38BDF8'
+    : maxWaterLevel >= 100 ? '#EF4444' : maxWaterLevel >= 60 ? '#EAB308' : '#22C55E';
+  const formatTime = (t: string) => (isWaterLevelSeries ? `${t.slice(8, 10)}/${t.slice(5, 7)}` : t);
 
   return (
     <div className="w-full pt-1">
       <div className="flex items-center justify-between text-[11px] mb-1.5 px-0.5">
         <span className="font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: strokeColor }} />
-          Tinggi Banjir (cm)
+          {isWaterLevelSeries ? 'Muka Air TMA (cm)' : 'Tinggi Banjir (cm)'}
         </span>
         <span className="text-slate-500 dark:text-slate-400 font-mono text-[10px]">
           Semua titik
@@ -122,7 +127,7 @@ export const HydrographChart: React.FC<HydrographChartProps> = ({ data }) => {
                   textAnchor="middle"
                   className="text-[8.5px] fill-slate-400 dark:fill-slate-500 font-mono"
                 >
-                  {d.time}
+                  {formatTime(d.time)}
                 </text>
               </g>
             );
