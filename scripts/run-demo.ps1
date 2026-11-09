@@ -50,6 +50,10 @@ foreach ($p in @($BackendPort, $FrontendPort)) {
 if (-not (Test-Path (Join-Path $root "frontend\node_modules"))) {
     Write-Error "frontend\node_modules is missing. Run: cd frontend; npm install"
 }
+$python = Join-Path $root "backend\.venv\Scripts\python.exe"
+if (-not (Test-Path $python)) {
+    $python = "python"
+}
 
 # Settings are inherited by the child processes.
 $env:PAWANG_DATA_MODE = if ($Live) { "live" } else { "replay" }
@@ -61,7 +65,7 @@ if ($Live) { Remove-Item Env:PAWANG_DEMO_DATE -ErrorAction SilentlyContinue } el
 
 Write-Host "Starting backend  : mode=$($env:PAWANG_DATA_MODE) qwen=$($env:QWEN_ENABLED) port=$BackendPort"
 $backend = Start-Process -PassThru -NoNewWindow -WorkingDirectory (Join-Path $root "backend") `
-    -FilePath "python" -ArgumentList "-m", "uvicorn", "app.main:app", "--port", "$BackendPort"
+    -FilePath $python -ArgumentList "-m", "uvicorn", "app.main:app", "--port", "$BackendPort"
 
 Write-Host "Starting frontend : port=$FrontendPort"
 $frontend = Start-Process -PassThru -NoNewWindow -WorkingDirectory (Join-Path $root "frontend") `

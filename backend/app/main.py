@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+from contextlib import asynccontextmanager
 
 import httpx
 import pandas as pd
@@ -62,17 +63,23 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
     pipeline = Pipeline(s, tools, llm, TTLCache(s.cache_ttl_s), AuditLog(s.audit_dir, audit_enabled))
     advice_writer = AdviceWriter(llm)
 
-    app = FastAPI(title="Pawang AI backend", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        if s.data_mode == "live" and s.tma_live_enabled and s.tma_poll_s > 0:
+            tools.tma_live.start_polling(s.tma_poll_s)
+        try:
+            yield
+        finally:
+            if s.data_mode == "live" and s.tma_live_enabled and s.tma_poll_s > 0:
+                tools.tma_live.stop_polling()
+
+    app = FastAPI(title="Pawang AI backend", version="0.1.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
                        allow_methods=["GET"], allow_headers=["*"])
     app.state.pipeline = pipeline
 
     # Optional background poller: builds the water-level history (the model needs yesterday's level) even when nobody
     # calls the API. Off by default (PAWANG_TMA_POLL_S=0); the demo script turns it on for live mode.
-    if s.data_mode == "live" and s.tma_live_enabled and s.tma_poll_s > 0:
-        tools.tma_live.start_polling(s.tma_poll_s)
-        app.add_event_handler("shutdown", tools.tma_live.stop_polling)
-
     def resolve_date(time: str, date: str | None) -> dt.date:
         if date:
             if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
