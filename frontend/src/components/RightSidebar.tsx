@@ -17,6 +17,7 @@ import {
   Pause,
   MapPin,
   PhoneCall,
+  Info,
 } from 'lucide-react';
 import { AreaAnalysisResponse, GeoJSONGridFeature, TimeHorizon } from '@/data/types';
 import { getRiskBadgeClasses, getSiagaBadgeClasses, getColorForRainfall } from '@/utils/colorScale';
@@ -48,6 +49,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   onOpenSearchModal,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showExplain, setShowExplain] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
@@ -268,6 +270,38 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                     ID: {analysis.grid_id}
                   </span>
                 </div>
+              </div>
+
+              {/* Penjelasan prediksi (tersembunyi sampai diklik) */}
+              <div className="rounded-xl border border-gray-200 text-[11px] dark:border-gray-700/50">
+                <button
+                  type="button"
+                  onClick={() => setShowExplain((v) => !v)}
+                  aria-expanded={showExplain}
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left font-bold text-slate-700 dark:text-slate-200"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Info size={13} className="text-blue-600 dark:text-blue-400" />
+                    Penjelasan prediksi
+                  </span>
+                  <ChevronRight size={13} className={`transition-transform ${showExplain ? 'rotate-90' : ''}`} />
+                </button>
+                {showExplain && (
+                  <ul className="list-disc space-y-1.5 px-3 pb-3 pl-7 leading-relaxed text-slate-600 dark:text-slate-300">
+                    <li>
+                      <b>Probabilitas banjir</b>: peluang menurut model bahwa banjir terjadi di wilayah ini pada hari
+                      yang diprediksi, dihitung dari pola hujan, tinggi muka air, dan data banjir tahun-tahun lalu.
+                    </li>
+                    <li>
+                      <b>Persen</b>: bukan luas wilayah yang tergenang. Banjir jarang terjadi, jadi angka kecil
+                      (misalnya 5-7%) sudah jauh di atas hari biasa. Bandingkan antar wilayah dan antar hari.
+                    </li>
+                    <li>
+                      <b>Risk</b> (Low / Medium / High): kategori dari persen tersebut. Makin tinggi persen, makin
+                      tinggi kategori. Ini perkiraan, bukan kepastian.
+                    </li>
+                  </ul>
+                )}
               </div>
 
               {/* SECTION 1: Overview Analisa Card */}
