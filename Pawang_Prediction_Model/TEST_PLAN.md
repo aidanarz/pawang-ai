@@ -26,11 +26,14 @@ Production setup: kecamatan unit (44), logistic regression (`C = 0.01`), sigmoid
 | Unit | date and name parsing, rain and TMA features, JSON round-trip, calibration, aggregation | Done |
 | Integration | synthetic data -> dataset -> train - > predict, chronological split, both algorithms | Done |
 | Contract | output schema, per-row fallback, reject incomplete input, training/inference parity | Done |
-| Data validation (real data) | schema, label counts, coverage, duplicates | Planned |
-| Model evaluation (real data) | CV, baselines, calibration, leakage | Manual / Planned |
-| Robustness | extreme rain, TMA datum shift, API errors | Planned |
+| Data validation (real data) | schema, label counts, coverage, duplicates | Done 2026-11-09: 3 pass, 2 fail (D3, D4) |
+| Model evaluation (real data) | CV, baselines, calibration, leakage | Done 2026-11-09: all pass; M6 reported |
+| Robustness | extreme rain, TMA datum shift, API errors | Done 2026-11-09: 2 pass, 1 fail (F2) |
 
 37 automated tests exist (`python -m pytest`, no network needed, synthetic data from `src/synthetic.py`). Synthetic data proves the plumbing only, not model quality.
+
+The real-data tests above run with `python tests/run_test_plan.py` (about 1 minute, works on a temporary copy of `data/`) and write
+[TEST_RESULTS.md](TEST_RESULTS.md). The project-wide report is [../TEST_REPORT.md](../TEST_REPORT.md).
 
 ## 4. Key tests and acceptance criteria
 

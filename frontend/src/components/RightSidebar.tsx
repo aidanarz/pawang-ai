@@ -21,6 +21,7 @@ import {
 import { AreaAnalysisResponse, GeoJSONGridFeature, TimeHorizon } from '@/data/types';
 import { getRiskBadgeClasses, getSiagaBadgeClasses, getColorForRainfall } from '@/utils/colorScale';
 import { HydrographChart } from './HydrographChart';
+import { formatProbability } from '@/utils/formatProbability';
 
 interface RightSidebarProps {
   analysis: AreaAnalysisResponse | null;
@@ -252,6 +253,17 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   >
                     {riskClasses.label}
                   </span>
+                  <div
+                    className="flex flex-col items-end leading-none"
+                    title="Probabilitas banjir dari model untuk hari ini, bukan persentase wilayah yang tergenang"
+                  >
+                    <span className={`text-xl font-extrabold tabular-nums ${riskClasses.text}`}>
+                      {formatProbability(analysis.flood_probability) ?? '–'}
+                    </span>
+                    <span className="mt-0.5 text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Probabilitas banjir
+                    </span>
+                  </div>
                   <span className="text-[10px] font-mono text-slate-400">
                     ID: {analysis.grid_id}
                   </span>

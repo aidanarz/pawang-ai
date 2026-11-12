@@ -89,6 +89,8 @@ export interface AreaAnalysisResponse {
   district: string;
   city: string;
   risk_level: RiskLevel;
+  /** Model's flood probability for the day, 0..1. Null when the inputs were incomplete. */
+  flood_probability?: number | null;
   duration_est: string;
   recommendation: string;
   commuter_advisory: string;

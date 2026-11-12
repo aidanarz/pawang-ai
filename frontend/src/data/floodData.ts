@@ -698,6 +698,7 @@ export function getAnalysisForGrid(gridId: string): AreaAnalysisResponse {
     district: p.district,
     city: p.city,
     risk_level: isNoRisk ? 'Low' : p.risk_level,
+    flood_probability: p.flood_probability,
     duration_est: p.duration_est,
     recommendation: isNoRisk
       ? 'Aktivitas normal di seluruh area. Drainase kota berfungsi optimal tanpa ada indikasi hambatan air.'
