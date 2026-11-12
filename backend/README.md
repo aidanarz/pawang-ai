@@ -42,7 +42,7 @@ Try it without internet or Qwen (archive data from the repo):
 ```bash
 set PAWANG_DATA_MODE=replay       # PowerShell: $env:PAWANG_DATA_MODE="replay"
 set QWEN_ENABLED=false
-python -m uvicorn app.main:app --port 8000
+python -m uvicorn app.main:app --port 8000     # run ONE worker: cache, BPBD poller and the tma CSV lock are per process
 # http://localhost:8000/api/v1/heatmap?date=2020-02-25
 # http://localhost:8000/api/v1/analysis?grid_id=menteng&date=2020-02-25
 # http://localhost:8000/docs   (interactive API docs)

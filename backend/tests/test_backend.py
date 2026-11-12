@@ -12,6 +12,8 @@ from app import guardrails as G
 from app.agents import (AdviceFacts, AdviceWriter, DataFetchOrchestrator, FailureHandler, FreshnessChecker,
                         TEMPLATES, Verdict)
 from app.areas import get_catalog
+from app.audit import AuditLog
+from app.config import Settings
 from app.main import create_app, target_date_for
 from app.tools import ToolResult
 from conftest import FLOOD_DAY, FakeLLM
@@ -364,3 +366,29 @@ def test_health_reports_replay_date_range(replay_settings):
 
 def test_health_has_no_replay_range_in_live_mode(live_settings):
     assert client(live_settings).get("/api/v1/health").json()["replay_dates"] is None
+
+
+# ---- audit log must never fail a request; old files are pruned ---------------------------------------
+def test_audit_write_failure_does_not_break_request(replay_settings, tmp_path):
+    blocker = tmp_path / "not_a_folder"
+    blocker.write_text("x")                      # a file where the log folder should be: mkdir/open raise OSError
+    s = Settings(**{**replay_settings.__dict__, "audit_dir": blocker / "logs"})
+    r = client(s).get("/api/v1/heatmap", params={"date": FLOOD_DAY.isoformat()})
+    assert r.status_code == 200
+
+
+def test_audit_prunes_old_files(tmp_path):
+    old, new = tmp_path / "audit-2000-01-01.jsonl", tmp_path / f"audit-{dt.date.today():%Y-%m-%d}.jsonl"
+    old.write_text("{}\n"); new.write_text("{}\n")
+    AuditLog(tmp_path, keep_days=30)
+    assert not old.exists() and new.exists()
+
+
+# ---- live: a future target day has no gauge reading, so water level is not even requested -------------
+def test_live_future_day_skips_water_level(live_settings):
+    http, _ = _open_meteo()
+    c = client(live_settings, http=http)
+    c.get("/api/v1/heatmap", params={"date": (dt.datetime.now(WIB).date() + dt.timedelta(days=1)).isoformat()})
+    rec = json.loads(next(live_settings.audit_dir.glob("audit-*.jsonl")).read_text(encoding="utf-8").splitlines()[-1])
+    assert any(s["step"] == "skip" and s["tool"] == "get_water_level" for s in rec["trace"])
+    assert not any(s.get("tool") == "get_water_level" for s in rec["trace"] if s["step"] == "tool")

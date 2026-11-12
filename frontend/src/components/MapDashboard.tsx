@@ -112,7 +112,14 @@ export const MapDashboard: React.FC = () => {
           setAnalysis(null);
           return;
         }
-        if (!res.ok) return;
+        if (!res.ok) {
+          // Do not keep drawing the previous response as if it were current.
+          setDataSource('unavailable');
+          setUnavailableMessage('Server error, coba lagi sebentar lagi.');
+          setFeatures([]);
+          setAnalysis(null);
+          return;
+        }
         const json: HeatmapGeoJSONResponse = await res.json();
         const loaded = json.features;
         setDataSource(res.headers.get('x-pawang-source') === 'backend' ? 'backend' : 'mock');
@@ -146,10 +153,9 @@ export const MapDashboard: React.FC = () => {
         const params = new URLSearchParams({ grid_id: selectedGridId, time: timeHorizon });
         if (archiveDate) params.set('date', archiveDate);
         const res = await fetch(`/api/v1/analysis?${params.toString()}`);
-        if (res.ok && isMounted) {
-          const json: AreaAnalysisResponse = await res.json();
-          setAnalysis(json);
-        }
+        if (!isMounted) return;
+        // On failure clear it: the sidebar must not show the previous area's risk under this area's name.
+        setAnalysis(res.ok ? ((await res.json()) as AreaAnalysisResponse) : null);
       } catch (err) {
         console.error('Error fetching analysis:', err);
       }

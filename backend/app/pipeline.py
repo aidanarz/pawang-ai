@@ -21,7 +21,7 @@ from .audit import AuditLog
 from .cache import TTLCache
 from .config import Settings
 from .llm import LLM
-from .waterlevel import SIAGA_RANK
+from .waterlevel import SIAGA_RANK, WIB
 from .tools import ToolRegistry, ToolResult
 
 
@@ -97,7 +97,13 @@ class Pipeline:
             "get_water_level": lambda: self.tools.get_water_level(station_ids=station_ids, target_date=target_date),
         }
         results: dict[str, ToolResult] = {}
-        for name in plan.value["tools"]:
+        tools_to_call = list(plan.value["tools"])
+        # Live gauges stop at "now": a future target day can never have a reading, so skip the fetch (and the
+        # retry/LLM round it would trigger) and run rainfall-only. Confidence is LOW because the water level is absent.
+        if self.s.data_mode == "live" and target_date > dt.datetime.now(WIB).date() and "get_water_level" in tools_to_call:
+            tools_to_call.remove("get_water_level")
+            trace.append({"step": "skip", "tool": "get_water_level", "reason": "target day is in the future"})
+        for name in tools_to_call:
             results[name] = calls[name]()
             trace.append({"step": "tool", **results[name].summary()})
 

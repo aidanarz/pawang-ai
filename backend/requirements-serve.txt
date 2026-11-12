@@ -1,0 +1,11 @@
+# What the API needs at run time. Training and data-download scripts need the full Pawang_Prediction_Model/requirements.txt.
+fastapi>=0.110
+uvicorn>=0.29
+httpx>=0.27
+pandas>=2.0
+numpy>=1.24
+scikit-learn>=1.3
+scipy>=1.10
+xgboost>=2.0
+lxml>=4.9
+pytest>=7.0

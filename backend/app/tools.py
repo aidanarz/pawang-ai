@@ -17,7 +17,7 @@ from typing import Any, Callable
 import httpx
 import pandas as pd
 
-from .areas import AreaCatalog, Kecamatan
+from .areas import AreaCatalog
 from .config import Settings
 from .waterlevel import BpbdWaterLevel, TmaStore, WaterLevelError
 
@@ -75,8 +75,6 @@ def _parse_point(point_id: str) -> tuple[float, float]:
 
 class ToolRegistry:
     """Holds the tools plus their data providers. `http` is injectable so tests never touch the network."""
-
-    NAMES = ("resolve_area", "get_weather_forecast", "get_water_level", "get_static_features")
 
     def __init__(self, settings: Settings, catalog: AreaCatalog, http: httpx.Client | None = None):
         self.s = settings
@@ -212,12 +210,3 @@ class ToolRegistry:
         st = self.catalog.kelurahan_static
         d = st[st["cell_id"].isin(kelurahan_ids)].reset_index(drop=True)
         return ToolResult("get_static_features", ok=True, source="model-files", data=d)
-
-    def call(self, name: str, **kwargs) -> ToolResult:
-        if name not in self.NAMES:
-            return ToolResult(name, ok=False, source="registry", error=f"unknown tool '{name}'")
-        return getattr(self, name)(**kwargs)
-
-
-def kelurahan_of(areas: list[Kecamatan]) -> list:
-    return [k for a in areas for k in a.kelurahan]
