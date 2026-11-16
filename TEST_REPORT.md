@@ -6,7 +6,7 @@ the earlier version of this report, dated 2026-11-08/09) or **not run**. Nothing
 
 **Update 2026-11-16 (Qwen run, 10:09-10:45 WIB):** the agent drill was run with a real `qwen3.5:4b` on Ollama
 (sections 4.9, 9.8): Agent 1, Agent 2 and the advice writer all used Qwen's answer in **100% of 51 decisions**. Incident I-5 is closed;
-a broken Ollama update found on the way is logged as I-8. Automated suites were re-run on `alt-branch` commit `afeb3e3`
+a broken Ollama update found on the way is logged as I-8, and Qwen running on the CPU after the reinstall as I-9. Automated suites were re-run on `alt-branch` commit `afeb3e3`
 (all pass, section 7).
 
 ## 1. Introduction
@@ -294,6 +294,7 @@ All times 2026-11-16, WIB. Tester: Reyhan Batara (laptop, Windows) and Claude (c
 | 10:38-10:45 | `eval.evaluate agents --repeats 3` | **51 of 51 decisions used Qwen**; 0 guardrail rejections; 0 parse errors |
 | 10:50 | `alt-branch` `afeb3e3` (cloud): backend `pytest`, `eval.check_agents`, model `pytest`, frontend `vitest`, `tsc` | 63 passed; 28 / 28; 37 passed; 20 / 20; clean |
 | 10:50 | diff of agent code `1befd03`..`afeb3e3` | no change in `llm.py`, `agents.py`, `guardrails.py`, `prompts.py`, `eval/evaluate.py` |
+| 10:59 | `ollama ps` (laptop) | `qwen3.5:4b`, 3.1 GB, **PROCESSOR 100% CPU**, context 4096 (incident I-9) |
 
 ## 8. Test incident report
 
@@ -306,6 +307,7 @@ All times 2026-11-16, WIB. Tester: Reyhan Batara (laptop, Windows) and Claude (c
 | I-5 | agent drill | Ollama was not running on 2026-11-12, so the Qwen path of Agents 1, 2 and the advice writer was not exercised. | P2 (test gap) | **Closed 2026-11-16.** Rerun with a real `qwen3.5:4b`: 51 / 51 decisions used Qwen (9.8) |
 | I-6 | P-C2 | When 50 clients ask for the same uncached day at once, the server computes it 50 times: p50 6.3 s, 7.3 req/s, against 0.11 s for one client. The cache stores a result only after it is finished, and nothing makes concurrent requests wait for the first one. | P2 | Open. Per-key lock so concurrent misses wait for the first result |
 | I-8 | Qwen drill 2026-11-16 | Ollama's automatic update to 0.40.16 left `llama-server.exe` missing; every model call returned HTTP 500. The backend kept working: all 51 decisions fell back to the rules with no failed request. | P3 (environment) | **Closed.** Ollama reinstalled. Note for the demo machine: check `ollama run qwen3.5:4b` after any Ollama update |
+| I-9 | `ollama ps` 2026-11-16 10:59 | After the Ollama reinstall, `qwen3.5:4b` runs 100% on the CPU. Agent latency rose about 8-9 times against 2026-11-08 on the same laptop (advice p50 10.5 s vs 1.1 s). | P2 (environment, affects demo) | Open. Check that the GPU driver is seen (`nvidia-smi`), restart Ollama, read `%LOCALAPPDATA%\Ollama\server.log` for GPU detection, then rerun the drill |
 | I-7 | P-D | With a slow LLM (3 s), 80 users reading the analysis at once make a heatmap reload that needs no LLM wait up to 5.1 s (40 users: 2.0 s). Each analysis request holds one of the server's 40 worker threads while it waits for the LLM, so other requests queue. | P1 | Open. Cache the advice with the pipeline result, shorter LLM timeout, skip the LLM for a while after a timeout |
 
 Test runner bugs fixed while building the plan (not product bugs): a cache date range in D3 and a text-based heuristic in F2.
@@ -491,8 +493,8 @@ scenario D, so I-7 would appear at fewer concurrent users in practice.
 1. Fix I-4 (return 422 for an impossible date) and add a test for it.
 2. Fix I-1 (D3), a one-line condition, and re-run `tests/run_test_plan.py` as the release gate.
 3. Let the live collector run for 2 days, then repeat E2 and confirm `model_mode: full` appears.
-4. Done for the agents (I-5 closed). Next: have the team rate `advice_to_rate_20261116-1045.csv`, and check on the demo machine
-   whether Qwen runs on the GPU (`ollama ps`, column PROCESSOR), since 10.5 s per advice text is slow for users (see 9.8 and I-7).
+4. Done for the agents (I-5 closed). Next: have the team rate `advice_to_rate_20261116-1045.csv`, and fix I-9 so Qwen runs on the
+   GPU again (`ollama ps` must not show `100% CPU`), then rerun `eval.evaluate agents` to record the latency.
 5. Decide the user-facing risk labels and thresholds with the team (M5 and M6).
 6. Fix I-7 (cache the advice, shorter LLM timeout) and I-6 (one computation for concurrent identical requests), then rerun `eval.perf_test` and compare. Agree on targets (for example p95 for a cached heatmap) so the next run can pass or fail.
 
@@ -523,8 +525,8 @@ What this means:
 - **The system survives a broken LLM**: in the 10:09 run every model call failed and the platform still answered every decision
   with the rules (I-8).
 - **Latency is the weak point.** On 2026-11-16 Qwen was about 8-9 times slower than on 2026-11-08 on the same laptop (advice
-  10.5 s vs 1.1 s). The cause was not measured; a CPU-only Ollama after the reinstall is one possibility (`ollama ps` shows it).
-  Combined with I-7, slow advice is the main risk for the demo.
+  10.5 s vs 1.1 s). **Cause confirmed** at 10:59: `ollama ps` shows `qwen3.5:4b` running **100% on the CPU** after the reinstall
+  (incident I-9). Combined with I-7, slow advice is the main risk for the demo until the GPU is used again.
 - Open points the guardrails cannot judge, for the team's rating: "hujan ringan" next to a `high` risk (the risk also comes from
   30 days of rain and the water level), "tidak hujan dengan curah 0.3 mm" (correct by BMKG, reads oddly), and postponing travel
   when the risk is only `unknown`.
