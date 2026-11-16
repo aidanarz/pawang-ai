@@ -38,9 +38,9 @@ export const RainForecast: React.FC<RainForecastProps> = ({ rainfallMm, probabil
       <div className="flex items-start gap-3">
         <Icon size={40} className={color} aria-hidden />
         <div>
-          <div className="text-sm font-extrabold text-slate-800 dark:text-slate-100">{label}</div>
-          <div className="text-slate-500 dark:text-slate-400">
-            <b className="tabular-nums">{rainfallMm}</b> mm/hari{targetDate ? ` pada ${targetDate}` : ''}
+          <div className="text-sm font-extrabold text-[#010736] dark:text-[#FCF1D0]">{label}</div>
+          <div className="text-[#22396F] dark:text-[#BFDDF0]">
+            <b className="tabular-nums font-bold text-[#010736] dark:text-[#FCF1D0]">{rainfallMm}</b> mm/hari{targetDate ? ` pada ${targetDate}` : ''}
           </div>
         </div>
         {probabilityPct != null && (
@@ -48,11 +48,11 @@ export const RainForecast: React.FC<RainForecastProps> = ({ rainfallMm, probabil
             className="ml-auto flex flex-col items-end leading-none"
             title="Peluang hujan pada hari prakiraan, dari Open-Meteo"
           >
-            <span className="flex items-center gap-1 text-sm font-extrabold tabular-nums text-sky-500">
+            <span className="flex items-center gap-1 text-sm font-extrabold tabular-nums text-[#8CC0EB] dark:text-[#FCF1D0]">
               <Droplets size={12} aria-hidden />
               {probabilityPct}%
             </span>
-            <span className="mt-0.5 text-[9px] text-slate-400">peluang hujan</span>
+            <span className="mt-0.5 text-[9px] text-[#22396F] dark:text-[#BFDDF0]">peluang hujan</span>
           </div>
         )}
       </div>
@@ -64,11 +64,11 @@ export const RainForecast: React.FC<RainForecastProps> = ({ rainfallMm, probabil
               const isTarget = d.time === targetDate;
               return (
                 <div key={d.time} className="flex h-full flex-1 flex-col items-center justify-end gap-0.5">
-                  <span className="text-[9px] tabular-nums text-slate-500 dark:text-slate-400">
+                  <span className="text-[9px] tabular-nums font-medium text-[#010736] dark:text-[#FCF1D0]">
                     {Math.round(d.rainfall)}
                   </span>
                   <div
-                    className={`w-full rounded-t-sm ${isTarget ? 'bg-blue-600' : 'bg-slate-400/60'}`}
+                    className={`w-full rounded-t-sm ${isTarget ? 'bg-[#8CC0EB] dark:bg-[#FCF1D0]' : 'bg-[#BFDDF0] dark:bg-[#22396F]'}`}
                     style={{ height: `${Math.max(2, (d.rainfall / top) * 100)}%` }}
                   />
                 </div>
@@ -77,7 +77,7 @@ export const RainForecast: React.FC<RainForecastProps> = ({ rainfallMm, probabil
           </div>
           <div className="mt-0.5 flex gap-1">
             {days.map((d) => (
-              <span key={d.time} className="flex-1 text-center text-[9px] text-slate-400">
+              <span key={d.time} className="flex-1 text-center text-[9px] text-[#22396F] dark:text-[#BFDDF0]">
                 {d.time.slice(8, 10)}/{d.time.slice(5, 7)}
               </span>
             ))}
@@ -85,9 +85,9 @@ export const RainForecast: React.FC<RainForecastProps> = ({ rainfallMm, probabil
         </div>
       )}
 
-      <p className="flex items-start gap-1.5 leading-relaxed text-slate-500 dark:text-slate-400">
-        <Cloud size={12} className="mt-0.5 shrink-0" aria-hidden />
-        <span>
+      <p className="flex items-start gap-1.5 leading-relaxed text-[#22396F] dark:text-[#BFDDF0] text-justify text-[10.5px]">
+        <Cloud size={12} className="mt-0.5 shrink-0 text-[#8CC0EB] dark:text-[#FCF1D0]" aria-hidden />
+        <span className="text-justify">
           Biru = hari prakiraan, abu-abu = hari sebelumnya. Hujan hari prakiraan berasal dari model cuaca Open-Meteo,
           hari sebelumnya data tercatat; di mode arsip semuanya data arsip. Kategori mengikuti skala harian BMKG.
         </span>

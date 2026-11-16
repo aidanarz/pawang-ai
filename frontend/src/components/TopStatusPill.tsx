@@ -31,31 +31,31 @@ export const TopStatusPill: React.FC<TopStatusPillProps> = ({
   }, []);
 
   return (
-    <div className="top-status-pill glass-panel rounded-full px-4 py-2 shadow-md backdrop-blur-md text-xs flex items-center gap-2.5 border-none bg-white text-black dark:bg-slate-900/90 dark:text-slate-100 select-none transition-all">
-      {/* Live Indicator Dot (SISTEM AKTIF text removed) */}
+    <div className="top-status-pill rounded-full px-4 py-2 shadow-md backdrop-blur-md text-xs flex items-center gap-2.5 border border-[#22396F] bg-[#FFEBCC]/95 text-[#010736] dark:border-[#22396F] dark:bg-[#0D1C42]/95 dark:text-[#FCF1D0] transition-all">
+      {/* Live Indicator Dot */}
       <span className="relative flex h-2.5 w-2.5 shrink-0">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-black opacity-30 dark:bg-slate-400" />
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-black dark:bg-slate-300" />
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8CC0EB] opacity-60 dark:bg-[#FCF1D0]/40" />
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#8CC0EB] dark:bg-[#FCF1D0]" />
       </span>
 
-      <span className="text-black dark:text-slate-500 select-none">|</span>
+      <span className="text-[#BFDDF0] dark:text-[#22396F]">|</span>
 
       {/* Real-time Clock / Timestamp */}
-      <span className="font-mono text-[11px] font-medium text-black dark:text-slate-300">
+      <span className="font-mono text-[11px] font-semibold text-[#010736] dark:text-[#FCF1D0]">
         {currentTime || '11:00:00 WIB'}
       </span>
 
-      <span className="text-black dark:text-slate-500 select-none">|</span>
+      <span className="text-[#BFDDF0] dark:text-[#22396F]">|</span>
 
       {/* Zone Status */}
       {highRiskCount > 0 ? (
-        <div className="flex items-center gap-1.5 text-black dark:text-slate-200 font-semibold text-[11px]">
+        <div className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-bold text-[11px]">
           <CloudRain size={13} className="shrink-0" />
           <span>{highRiskCount} Zona Risiko Tinggi</span>
         </div>
       ) : (
-        <div className="flex items-center gap-1.5 text-black dark:text-slate-200 font-semibold text-[11px]">
-          <ShieldCheck size={13} className="shrink-0" />
+        <div className="flex items-center gap-1.5 text-[#010736] dark:text-[#FCF1D0] font-semibold text-[11px]">
+          <ShieldCheck size={13} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>Tidak ada zona risiko tinggi</span>
         </div>
       )}

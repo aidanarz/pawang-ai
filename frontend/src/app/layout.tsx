@@ -36,7 +36,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id" className={`${plusJakarta.variable} ${inter.variable} h-full antialiased dark`}>
-      <body className="h-full w-full overflow-hidden flex flex-col font-sans select-none">
+      <body className="h-full w-full overflow-hidden flex flex-col font-sans">
         {children}
       </body>
     </html>

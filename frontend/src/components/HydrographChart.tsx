@@ -47,16 +47,16 @@ export const HydrographChart: React.FC<HydrographChartProps> = ({ data }) => {
   return (
     <div className="w-full pt-1">
       <div className="flex items-center justify-between text-[11px] mb-1.5 px-0.5">
-        <span className="font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+        <span className="font-semibold text-[#010736] dark:text-[#FCF1D0] flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: strokeColor }} />
           {isWaterLevelSeries ? 'Muka air sungai/pintu air, maks. harian (cm)' : 'Tinggi Banjir (cm)'}
         </span>
-        <span className="text-slate-500 dark:text-slate-400 font-mono text-[10px]">
+        <span className="text-[#22396F] dark:text-[#BFDDF0] font-mono text-[10px]">
           {isWaterLevelSeries ? 'teramati, bukan tinggi genangan' : 'Semua titik'}
         </span>
       </div>
 
-      <div className="relative bg-slate-900/5 dark:bg-slate-900/40 rounded-lg p-1.5 border border-slate-200/50 dark:border-slate-800/60 overflow-hidden">
+      <div className="relative bg-[#FFF9D2]/70 dark:bg-[#010736]/70 rounded-lg p-1.5 border border-[#22396F] dark:border-[#22396F] overflow-hidden">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible">
           <defs>
             <linearGradient id="hydroFill" x1="0" y1="0" x2="0" y2="1">
@@ -73,7 +73,7 @@ export const HydrographChart: React.FC<HydrographChartProps> = ({ data }) => {
             y2={padding.top + graphHeight * 0.33}
             stroke="currentColor"
             strokeDasharray="2,2"
-            className="text-slate-200 dark:text-slate-800/80"
+            className="text-[#BFDDF0] dark:text-[#22396F]"
           />
           <line
             x1={padding.left}
@@ -82,7 +82,7 @@ export const HydrographChart: React.FC<HydrographChartProps> = ({ data }) => {
             y2={padding.top + graphHeight * 0.66}
             stroke="currentColor"
             strokeDasharray="2,2"
-            className="text-slate-200 dark:text-slate-800/80"
+            className="text-[#BFDDF0] dark:text-[#22396F]"
           />
 
           {/* Area Fill */}
@@ -116,7 +116,7 @@ export const HydrographChart: React.FC<HydrographChartProps> = ({ data }) => {
                   x={cx}
                   y={cy - 7}
                   textAnchor="middle"
-                  className="text-[8px] font-bold fill-slate-700 dark:fill-slate-200 font-mono"
+                  className="text-[8px] font-bold fill-[#010736] dark:fill-[#FCF1D0] font-mono"
                 >
                   {d.waterLevel}
                 </text>
@@ -125,7 +125,7 @@ export const HydrographChart: React.FC<HydrographChartProps> = ({ data }) => {
                   x={cx}
                   y={height - 4}
                   textAnchor="middle"
-                  className="text-[8.5px] fill-slate-400 dark:fill-slate-500 font-mono"
+                  className="text-[8.5px] fill-[#22396F] dark:fill-[#BFDDF0] font-mono"
                 >
                   {formatTime(d.time)}
                 </text>

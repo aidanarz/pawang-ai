@@ -41,7 +41,22 @@ export const MapDashboard: React.FC = () => {
   const [timeHorizon, setTimeHorizon] = useState<TimeHorizon>('5h');
   const [features, setFeatures] = useState<GeoJSONGridFeature[]>([]);
   const [analysis, setAnalysis] = useState<AreaAnalysisResponse | null>(null);
-  const [basemap, setBasemap] = useState<BasemapType>('dark');
+  const [basemap, setBasemap] = useState<BasemapType>(() => {
+    if (typeof window === 'undefined') return 'dark';
+    try {
+      return localStorage.getItem('pawang-theme') === 'light' ? 'osm' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window === 'undefined') return 'dark';
+    try {
+      return localStorage.getItem('pawang-theme') === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
 
@@ -62,10 +77,38 @@ export const MapDashboard: React.FC = () => {
 
   const hasRealData = dataSource === 'backend';
 
-  // Pawang AI uses a single dark dashboard theme.
+  // Synchronize initial theme preference
   useEffect(() => {
-    document.documentElement.classList.add('dark');
+    try {
+      const saved = localStorage.getItem('pawang-theme') as 'dark' | 'light' | null;
+      const initial = saved === 'light' ? 'light' : 'dark';
+      if (initial === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch {
+      document.documentElement.classList.add('dark');
+    }
   }, []);
+
+  const handleToggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem('pawang-theme', next);
+      } catch {}
+
+      if (next === 'dark') {
+        document.documentElement.classList.add('dark');
+        setBasemap('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        setBasemap('osm');
+      }
+      return next;
+    });
+  };
 
   // Ask once whether the backend is up and, in replay mode, which days it can serve.
   useEffect(() => {
@@ -238,7 +281,7 @@ export const MapDashboard: React.FC = () => {
     : layers;
 
   return (
-    <main className="relative w-screen h-screen overflow-hidden bg-slate-950">
+    <main className="relative w-screen h-screen overflow-hidden bg-[#FFF9D2] dark:bg-[#010736] transition-colors duration-300">
       {/* 1. Fullscreen Base Leaflet Map */}
       <div className="absolute inset-0 z-0">
         <LeafletMap
@@ -290,6 +333,8 @@ export const MapDashboard: React.FC = () => {
 
       {/* 5. Right Sidebar (Floating / Slide-out Panel) */}
       <RightSidebar
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
         analysis={analysis}
         features={features}
         isLoading={false}
