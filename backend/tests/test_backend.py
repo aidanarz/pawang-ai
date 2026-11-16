@@ -93,7 +93,8 @@ def _open_meteo(days_back=40, days_fwd=3, fail_first=0):
         if state["n"] <= fail_first:
             return httpx.Response(500, json={"error": True})
         n = len(req.url.params["latitude"].split(","))
-        body = [{"daily": {"time": times, "precipitation_sum": [5.0] * len(times)}} for _ in range(n)]
+        body = [{"daily": {"time": times, "precipitation_sum": [5.0] * len(times),
+                           "precipitation_probability_max": [40] * len(times)}} for _ in range(n)]
         return httpx.Response(200, json=body if n > 1 else body[0])
     return httpx.Client(transport=httpx.MockTransport(handler)), state
 
@@ -392,3 +393,15 @@ def test_live_future_day_skips_water_level(live_settings):
     rec = json.loads(next(live_settings.audit_dir.glob("audit-*.jsonl")).read_text(encoding="utf-8").splitlines()[-1])
     assert any(s["step"] == "skip" and s["tool"] == "get_water_level" for s in rec["trace"])
     assert not any(s.get("tool") == "get_water_level" for s in rec["trace"] if s["step"] == "tool")
+
+
+# ---- chance of rain comes from Open-Meteo only; no source, no number --------------------------------------
+def test_rain_probability_is_passed_through_from_open_meteo(live_settings):
+    http, _ = _open_meteo()
+    r = client(live_settings, http=http).get("/api/v1/analysis", params={"grid_id": "menteng", "time": "1h"})
+    assert r.json()["rain_probability_pct"] == 40
+
+
+def test_rain_probability_is_null_without_a_source(replay_settings):
+    r = client(replay_settings).get("/api/v1/analysis", params={"grid_id": "menteng", "date": FLOOD_DAY.isoformat()})
+    assert r.json()["rain_probability_pct"] is None

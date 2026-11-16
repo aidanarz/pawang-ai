@@ -38,6 +38,14 @@ describe('normalizeAnalysis', () => {
     expect(normalizeAnalysis(base).hydrograph.map((h) => h.time)).toEqual(['2020-02-24', '2020-02-25']);
   });
 
+  it('keeps daily rainfall even for days without a water level', () => {
+    expect(normalizeAnalysis(base).rain_daily).toEqual([
+      { time: '2020-02-23', rainfall: 1 },
+      { time: '2020-02-24', rainfall: 2 },
+      { time: '2020-02-25', rainfall: 3 },
+    ]);
+  });
+
   it('hides a hydrograph that has fewer than 2 usable points', () => {
     const one = { ...base, hydrograph: base.hydrograph.slice(0, 2) } as AreaAnalysisResponse;
     expect(normalizeAnalysis(one).hydrograph).toEqual([]);

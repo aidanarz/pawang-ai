@@ -18,10 +18,14 @@ import {
   MapPin,
   PhoneCall,
   Info,
+  CloudRain,
 } from 'lucide-react';
 import { AreaAnalysisResponse, GeoJSONGridFeature, TimeHorizon } from '@/data/types';
 import { getRiskBadgeClasses, getSiagaBadgeClasses, getColorForRainfall } from '@/utils/colorScale';
 import { HydrographChart } from './HydrographChart';
+import { Disclosure } from './Disclosure';
+import { RainForecast } from './RainForecast';
+import { rainCategory } from '@/utils/rainCategory';
 import { formatProbability } from '@/utils/formatProbability';
 
 interface RightSidebarProps {
@@ -49,7 +53,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   onOpenSearchModal,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [showExplain, setShowExplain] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
@@ -276,20 +279,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               </div>
 
               {/* Penjelasan prediksi (tersembunyi sampai diklik) */}
-              <div className="rounded-xl border border-gray-200 text-[11px] dark:border-gray-700/50">
-                <button
-                  type="button"
-                  onClick={() => setShowExplain((v) => !v)}
-                  aria-expanded={showExplain}
-                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left font-bold text-slate-700 dark:text-slate-200"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Info size={13} className="text-blue-600 dark:text-blue-400" />
-                    Penjelasan prediksi
-                  </span>
-                  <ChevronRight size={13} className={`transition-transform ${showExplain ? 'rotate-90' : ''}`} />
-                </button>
-                {showExplain && (
+              <Disclosure
+                title="Penjelasan prediksi"
+                icon={<Info size={13} className="text-blue-600 dark:text-blue-400" />}
+              >
                   <ul className="list-disc space-y-1.5 px-3 pb-3 pl-7 leading-relaxed text-slate-600 dark:text-slate-300">
                     <li>
                       <b>Probabilitas banjir</b>: peluang menurut model bahwa banjir terjadi di wilayah ini pada hari
@@ -316,8 +309,20 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                       genangan di jalan. <b>Siaga</b> adalah status BPBD untuk TMA di pos itu (Siaga 1 paling tinggi).
                     </li>
                   </ul>
-                )}
-              </div>
+              </Disclosure>
+
+              {/* Perkiraan hujan (tersembunyi sampai diklik) */}
+              <Disclosure
+                title="Perkiraan hujan"
+                icon={<CloudRain size={13} className="text-blue-600 dark:text-blue-400" />}
+              >
+                <RainForecast
+                  rainfallMm={analysis.rainfall_mm}
+                  probabilityPct={analysis.rain_probability_pct}
+                  targetDate={analysis.target_date}
+                  daily={analysis.rain_daily ?? []}
+                />
+              </Disclosure>
 
               {/* SECTION 1: Overview Analisa Card */}
               <div className="min-h-[270px] space-y-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700/50">
@@ -380,17 +385,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                       className="text-[9.5px] font-semibold mt-0.5"
                       style={{ color: getColorForRainfall(analysis.rainfall_mm) }}
                     >
-                      {analysis.rainfall_mm >= 150
-                        ? 'Hujan Ekstrem'
-                        : analysis.rainfall_mm >= 100
-                        ? 'Sangat Lebat'
-                        : analysis.rainfall_mm >= 50
-                        ? 'Hujan Lebat'
-                        : analysis.rainfall_mm >= 20
-                        ? 'Hujan Sedang'
-                        : analysis.rainfall_mm >= 0.5
-                        ? 'Hujan Ringan'
-                        : 'Tidak Hujan'}
+                      {rainCategory(analysis.rainfall_mm).label}
                     </div>
                   </div>
 

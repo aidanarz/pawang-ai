@@ -146,16 +146,19 @@ class ToolRegistry:
         params = {
             "latitude": ",".join(f"{la:.4f}" for la, _ in coords),
             "longitude": ",".join(f"{lo:.4f}" for _, lo in coords),
-            "daily": "precipitation_sum", "timezone": self.s.timezone,
+            "daily": "precipitation_sum,precipitation_probability_max", "timezone": self.s.timezone,
             "past_days": max(0, min(past_days, 92)), "forecast_days": min(forecast_days, 16),
         }
         r = self.http.get(OPEN_METEO_FORECAST_URL, params=params)
         r.raise_for_status()
         payload = r.json()
         payload = payload if isinstance(payload, list) else [payload]   # one object per location
-        frames = []
+        frames, prob = [], {}
         for pid, loc in zip(point_ids, payload):
             daily = loc.get("daily", {})
+            for day, p in zip(daily.get("time", []), daily.get("precipitation_probability_max") or []):
+                if day == target_date.isoformat() and p is not None:     # Open-Meteo's own chance of rain, never computed here
+                    prob[pid] = float(p)
             frames.append(pd.DataFrame({"point_id": pid, "date": pd.to_datetime(daily.get("time", [])),
                                         "precip_mm": daily.get("precipitation_sum", [])}))
         data = pd.concat(frames, ignore_index=True)
@@ -164,7 +167,8 @@ class ToolRegistry:
         now = dt.datetime.now(UTC)
         return ToolResult("get_weather_forecast", ok=True, source="open-meteo-forecast", data=data,
                           fetched_at=now, data_as_of=now,
-                          covers_until=data["date"].max().date() if len(data) else None)
+                          covers_until=data["date"].max().date() if len(data) else None,
+                          extra={"precip_prob": prob})
 
     # ---- 3. get_water_level ------------------------------------------------------------------------
     @_timed

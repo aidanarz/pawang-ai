@@ -104,6 +104,10 @@ export interface AreaAnalysisResponse {
   evacuation_route: string;
   affected_roads: string[];
   hydrograph: HydrographPoint[];
+  /** Daily rainfall (mm) up to the predicted day, kept even where there is no water level. */
+  rain_daily?: Array<{ time: string; rainfall: number }>;
+  /** Open-Meteo chance of rain (%) on the predicted day. Null/absent when the source has none (archive mode). */
+  rain_probability_pct?: number | null;
   nearby_stations: WaterGateStation[];
   safe_shelters: EvacuationCenter[];
   last_updated: string;

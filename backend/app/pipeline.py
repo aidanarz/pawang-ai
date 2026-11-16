@@ -36,6 +36,7 @@ class AreaResult:
     rainfall_mm: float | None  # target-day rainfall (unit mean), the same value the model saw
     water_level_cm: float | None
     siaga_level: str | None = None   # worst live siaga label among the area's stations (live BPBD only)
+    rain_prob_pct: float | None = None   # Open-Meteo chance of rain on the target day, mean over the area's points (live only)
 
 
 @dataclass
@@ -162,6 +163,7 @@ class Pipeline:
                  rain_v: Verdict, tma_v: Verdict, target_date: dt.date) -> None:
         fp = P.get_predictor(str(self.s.models_dir))
         rain = results["get_weather_forecast"].data
+        prob = results["get_weather_forecast"].extra.get("precip_prob", {})
         tma = results["get_water_level"].data if tma_v.ok and "get_water_level" in results else None
         kf = P.build_kelurahan_features(fp, areas, target_date, rain, tma)
         out = P.predict(fp, kf, mode="auto" if tma is not None else "rainfall_only")
@@ -182,4 +184,5 @@ class Pipeline:
                 rainfall_mm=_f(u["rain_d0"]) if u is not None else None,
                 water_level_cm=_f(u["tma_max"]) if u is not None and "tma_max" in u.index else None,
                 siaga_level=max((siaga[s] for s in a.station_ids if s in siaga), key=SIAGA_RANK.get, default=None),
+                rain_prob_pct=(sum(v) / len(v)) if (v := [prob[p] for p in a.point_ids if p in prob]) else None,
             ))

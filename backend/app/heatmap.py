@@ -120,6 +120,7 @@ def analysis_response(r: PipelineResult, a: AreaResult, advice: dict) -> dict:
         "commuter_advisory": advice["commuter_advisory"],
         "advice_by": advice.get("decided_by"),
         "hydrograph": hydrograph(r, a),
+        "rain_probability_pct": None if a.rain_prob_pct is None else round(a.rain_prob_pct),
         "nearby_stations": stations,
         "safe_shelters": [],
         "last_updated": dt.datetime.now(dt.timezone.utc).isoformat(),

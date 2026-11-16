@@ -96,6 +96,7 @@ export function normalizeAnalysis(a: AreaAnalysisResponse): AreaAnalysisResponse
     confidence_score: (r.confidence_score as number | null) ?? 0,
     affected_roads: (r.affected_roads as string[] | null) ?? [],
     hydrograph: hydrograph.length >= 2 ? hydrograph : [],
+    rain_daily: (a.hydrograph ?? []).map((h) => ({ time: h.time, rainfall: h.rainfall })),
     // Backend stations carry no coordinates or siaga thresholds yet; the map needs lat/lng.
     nearby_stations: (a.nearby_stations ?? []).filter((s) => s.lat != null && s.lng != null),
     safe_shelters: a.safe_shelters ?? [],
