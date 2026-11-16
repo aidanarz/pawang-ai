@@ -107,6 +107,8 @@ export interface AreaAnalysisResponse {
   nearby_stations: WaterGateStation[];
   safe_shelters: EvacuationCenter[];
   last_updated: string;
+  /** Day the model predicted (YYYY-MM-DD); sent by the backend only. */
+  target_date?: string;
 }
 
 /** Where the data on screen came from. 'mock' = built-in demo data (backend down or empty). */

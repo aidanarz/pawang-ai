@@ -42,8 +42,10 @@ sidebar or map), unused heat-layer code and two npm packages removed. CI: backen
 In scope: data validation, model quality, inference contract, robustness, backend API, the three agents, guardrails, BPBD
 scraper, frontend logic and build, live-mode end-to-end with the real internet.
 
-Out of scope (not tested at all): mobile, accessibility, load, security testing; Qwen output quality; the full model in live mode
-(needs about 2 days of BPBD history, see 8.2).
+Also in scope since the performance run: speed under different circumstances and a stress test of the backend (section 4.8).
+
+Out of scope (not tested at all): mobile, accessibility, security testing; frontend rendering speed; long soak tests and memory
+growth; Qwen output quality; the full model in live mode (needs about 2 days of BPBD history, see 9.6).
 
 ### 2.3 Approach
 
@@ -54,6 +56,7 @@ Out of scope (not tested at all): mobile, accessibility, load, security testing;
 | Backend system | `eval.evaluate system --year 2020`: the whole backend replayed over 366 days against recorded floods |
 | Agents | `eval.check_agents`: 28 pass/fail checks, rules only |
 | Frontend | `vitest` (18 tests), `tsc --noEmit`, `eslint`, `next build` |
+| Performance and stress | `eval.perf_test`: timings in process, slow mocked Open-Meteo, a real server under 1-100 concurrent clients, a slow fake LLM |
 | End to end | real backend in live mode with the real Open-Meteo and BPBD, queried over HTTP |
 
 Pass criteria are in the test cases (section 4). No code was changed to make a check pass; failing checks are reported as found.
@@ -69,6 +72,7 @@ Windows 11 Home 10.0.26300, Python 3.12.10, Node 22.12.0, internet access during
 |---|---|
 | 2026-11-08, 11-09 | manual end-to-end checks while building (carried over, section 4.7) |
 | 2026-11-12 14:40-14:45 | all automated suites, production build, live check (this run) |
+| 2026-11-12 15:13-15:15 | performance and stress test (this run) |
 
 ### 2.6 Personnel
 
@@ -90,6 +94,7 @@ person responsible for the project's test results is to be confirmed by the team
 | System | recall, precision, F1, PR-AUC, coverage, latency, train/serve skew | replay of 2020 |
 | Frontend | null handling, colour scale, formatting, type check, lint, build | vitest, tsc, eslint, next build |
 | End to end | live data, both horizons, analysis, invalid input | real server on port 8011, `curl` |
+| Performance | latency cold vs cached, slow upstream, retry, throughput and tail latency under concurrency, slow LLM | `eval/perf_test.py` (section 4.8) |
 
 ## 4. Test cases
 
@@ -171,6 +176,19 @@ metrics reported against the recorded floods.
 training range of all 10 mapped posts; 44 valid boundary polygons (about 640 km2). 2026-11-09: headless-Chrome screenshot
 [docs/test-evidence/ui-replay-2020-02-25.png](docs/test-evidence/ui-replay-2020-02-25.png).
 
+### 4.8 Performance and stress (`eval/perf_test.py`, no internet and no real Qwen needed)
+
+No performance targets (for example "p95 under 1 s") were defined for this project, so these tests **measure and report; they
+have no pass/fail line**. Errors (any answer other than HTTP 200, or no answer within 120 s) are counted.
+
+| ID | Circumstance | Input / event |
+|---|---|---|
+| P-A | components, in process, replay | start-up; `pipeline.run` for all 44 kecamatan on 10 different days, cache miss and cache hit |
+| P-B | live mode, mocked Open-Meteo, in process | upstream answers at once; takes 0.5 s; takes 2 s; first call fails and is retried (0.5 s each) |
+| P-C1 | real server (uvicorn subprocess), replay, 1 client | 30 sequential requests per endpoint: heatmap and analysis, cache miss and hit; health |
+| P-C2 | stress, real server, replay | heatmap cache hit with 1 / 10 / 50 / 100 clients (200 requests each); heatmap cache miss (new day each request) with 10 / 50 clients (100 requests); analysis cache hit with 50 clients; 50 clients asking for the **same** uncached day at once |
+| P-D | slow LLM, real server with a fake Ollama that answers after 3 s | 10 / 40 / 80 users reading the analysis at once, while one more client reloads the heatmap (which needs no LLM) |
+
 ## 5. Test procedures
 
 Run from the repository root. Python commands use the project's installed environment.
@@ -192,6 +210,9 @@ QWEN_ENABLED=true  python -m eval.evaluate agents --repeats 1   # needs Ollama w
 cd ../frontend
 npm run typecheck && npm run lint && npm test
 npx next build
+
+# 3b. Performance and stress (about 2 min; starts its own server on port 8012)
+cd ../backend && python -m eval.perf_test      # --requests 100 for a lighter run
 
 # 4. Live end to end (real internet)
 cd ../backend
@@ -235,6 +256,7 @@ All times 2026-11-12, WIB. Tester: Claude Code. Location: the repository worksta
 | 14:42 | live server start, E1-E5 | E1-E4 pass; **E5 fails: HTTP 500** (incident I-4) |
 | 14:43 | `eval.evaluate agents --repeats 1` | Qwen not reachable, policy only (incident I-5) |
 | 14:43 | `curl http://localhost:11434` | no answer |
+| 15:13-15:15 | `eval.perf_test` (1 min 42 s, one run) | completed, 0 request errors; two weaknesses found (incidents I-6, I-7) |
 
 ## 8. Test incident report
 
@@ -245,6 +267,8 @@ All times 2026-11-12, WIB. Tester: Claude Code. Location: the repository worksta
 | I-3 | F2 | `build_tma` merges a renamed station whose level steps by +500 cm without any warning. | P2 | Open. Warn when the median level changes by more than a set amount at the rename date |
 | I-4 | E5 | `GET /api/v1/heatmap?date=2020-02-31` returns HTTP 500. The date passes the `YYYY-MM-DD` regex, then `date.fromisoformat` raises `ValueError: day is out of range for month` (`backend/app/main.py`, `resolve_date`). Expected 422. | P2 | Open. Catch `ValueError` and return 422 |
 | I-5 | agent drill | Ollama is not running, so the Qwen path of Agents 1, 2 and the advice writer was not exercised. Every decision used the rules. | P2 (test gap) | Open. Start Ollama with `qwen3.5:4b` (or set `QWEN_MODEL`) and rerun `eval.evaluate agents` |
+| I-6 | P-C2 | When 50 clients ask for the same uncached day at once, the server computes it 50 times: p50 6.3 s, 7.3 req/s, against 0.11 s for one client. The cache stores a result only after it is finished, and nothing makes concurrent requests wait for the first one. | P2 | Open. Per-key lock so concurrent misses wait for the first result |
+| I-7 | P-D | With a slow LLM (3 s), 80 users reading the analysis at once make a heatmap reload that needs no LLM wait up to 5.1 s (40 users: 2.0 s). Each analysis request holds one of the server's 40 worker threads while it waits for the LLM, so other requests queue. | P1 | Open. Cache the advice with the pipeline result, shorter LLM timeout, skip the LLM for a while after a timeout |
 
 Test runner bugs fixed while building the plan (not product bugs): a cache date range in D3 and a text-based heuristic in F2.
 
@@ -263,6 +287,7 @@ Test runner bugs fixed while building the plan (not product bugs): a cache date 
 | `tsc`, `eslint`, `next build` | clean, clean, completed |
 | Live end to end (E1-E5) | 4 pass, **1 fail (E5)** |
 | Qwen agent drill | **not run** (Ollama unreachable) |
+| Performance and stress | completed, 0 errors in all scenarios; **2 weaknesses** (I-6, I-7), see 9.5 |
 
 ### 9.2 Model quality (from `run_test_plan.py`)
 
@@ -324,7 +349,89 @@ earlier reported (358 / 510 ms) differs from this run; the load on the machine w
 
 All 44 areas ran rainfall-only because the store was empty (the BPBD page shows today only). This is expected behaviour, not a failure.
 
-### 9.5 Known limits of this testing
+### 9.5 Performance and stress (2026-11-12, 15:13-15:15, one run, this workstation: 22 logical CPUs)
+
+How to read it: the load generator ran on the same machine as the server, in replay mode (archive data, no network), without
+Qwen, in one run. Absolute numbers will differ on other hardware; the shape of the results is the finding. There are no
+performance targets, so none of this is pass/fail. Raw numbers: `backend/eval/results/perf_20261112-1514.json` (git-ignored).
+
+**A. Components (in process, all 44 kecamatan)**
+
+| Step | p50 ms | p95 ms | max ms |
+|---|---|---|---|
+| `create_app` (catalogue, model, clients) | 143 | | |
+| `pipeline.run`, cache miss | 125.5 | 158.8 | 167.3 |
+| `pipeline.run`, cache hit | 0.0 | 0.0 | 0.0 |
+
+**B. Live mode with a mocked Open-Meteo (heatmap, all 44, no LLM)**
+
+| Circumstance | First request, ms (miss) | Next request, ms (cache hit) |
+|---|---|---|
+| Open-Meteo answers at once | 134 | 13.0 |
+| Open-Meteo takes 0.5 s | 621 | 31.0 |
+| Open-Meteo takes 2 s | 2134 | 20.1 |
+| First call fails, retry, 0.5 s each | 1128 | 13.0 |
+
+A miss costs the upstream time plus about 120 ms (one call for all 12 grid points). A retry doubles the wait. A cache hit stays
+at 13-31 ms whatever the upstream does.
+
+**C1. One client, 30 sequential requests per row (real server), ms**
+
+| Endpoint | p50 | p95 | max |
+|---|---|---|---|
+| heatmap, cache miss | 112.1 | 131.3 | 157.1 |
+| heatmap, cache hit | 10.0 | 22.5 | 46.2 |
+| analysis, cache miss | 53.5 | 69.1 | 73.0 |
+| analysis, cache hit | 4.2 | 6.3 | 20.9 |
+| health | 2.0 | 3.5 | 25.4 |
+
+**C2. Stress: concurrent clients (real server, no LLM)**
+
+| Scenario | Requests | Errors | Req/s | p50 ms | p95 ms | p99 ms | max ms |
+|---|---|---|---|---|---|---|---|
+| heatmap cache hit, 1 client | 200 | 0 | 87.3 | 10.1 | 14.4 | 53.5 | 68.9 |
+| heatmap cache hit, 10 clients | 200 | 0 | 85.5 | 106.6 | 165.3 | 173.7 | 174.8 |
+| heatmap cache hit, 50 clients | 200 | 0 | 84.8 | 450.4 | 1453.6 | 2084.6 | 2225.9 |
+| heatmap cache hit, 100 clients | 200 | 0 | 82.8 | 472.6 | 2254.5 | 2313.8 | 2331.6 |
+| heatmap cache miss (new day each), 10 clients | 100 | 0 | 6.9 | 1483.9 | 1646.9 | 1684.3 | 1729.2 |
+| heatmap cache miss (new day each), 50 clients | 100 | 0 | 5.8 | 7426.6 | 10281.6 | 12781.7 | 13346.0 |
+| analysis cache hit, 50 clients | 200 | 0 | 202.8 | 229.6 | 265.9 | 276.3 | 397.6 |
+| 50 clients at once, **same** uncached day | 50 | 0 | 7.3 | 6309.4 | 6761.8 | 6789.3 | 6798.3 |
+
+What it shows:
+
+- **No errors at any load.** All 1,250 stress requests returned HTTP 200.
+- **Throughput does not grow with clients.** A cached heatmap serves about 85 requests/s with 1 client and still about 83 with
+  100 clients, so extra clients only wait longer (p50 10 ms to 473 ms, p99 2.3 s). The server works on one request at a time;
+  the cost is in building the 44-polygon JSON (about 10 ms each), not in the model.
+- **A cache miss is about 10 times more expensive than a hit** and caps the server at 6-7 uncached requests/s. 100 different
+  uncached days asked by 50 clients at once take up to 13 s for the slowest.
+- **Duplicate work (I-6).** The same uncached day asked 50 times at once is computed 50 times (6.3 s p50), not once.
+- The analysis endpoint is lighter than the heatmap (one kecamatan, not 44): 203 requests/s at 50 clients.
+
+**D. Slow LLM (fake Ollama answering after 3 s; real server with a 40-thread worker pool)**
+
+| Scenario | Clients | p50 ms | max ms | Errors |
+|---|---|---|---|---|
+| heatmap cache hit, LLM idle | - | 12.6 | 25.0 | 0 |
+| analysis cache hit, 1 client | - | 3034.1 | 3034.1 | 0 |
+| analysis x10 at once | 10 | 3066.0 | 3084.9 | 0 |
+| heatmap reload during that (needs no LLM) | 10 | 10.5 | 13.0 | 0 |
+| analysis x40 at once | 40 | 3181.1 | 3251.0 | 0 |
+| heatmap reload during that (needs no LLM) | 40 | 12.1 | 2015.4 | 0 |
+| analysis x80 at once | 80 | 4656.5 | 6269.4 | 0 |
+| heatmap reload during that (needs no LLM) | 80 | 27.7 | 5074.7 | 0 |
+
+- **Every analysis request waits for the LLM, even when the area result is cached** (3.0 s against 4 ms without it). The advice is not cached.
+- **Up to 10 users the rest of the site is unaffected. At 40 and 80 users it is not** (I-7): the worker pool is full, so a map reload
+  that needs no LLM waited 2.0 s and 5.1 s at worst. The median probe time stayed low because only the requests that arrived
+  while the pool was full had to wait.
+
+What this run does not cover: memory growth and long soak tests; a load generator on a separate machine; live mode through the real
+network under load (B uses a mock); the frontend and the Next.js proxy under load; a real Qwen (the fake answers with an invalid
+reply every time, so the advice always falls back to the template after the delay); repeated runs to measure the spread between runs.
+
+### 9.6 Known limits of this testing
 
 - **The full model has never run in live mode on real data.** It needs about 2 days of BPBD history (`PAWANG_TMA_POLL_S=1800`). Only fixtures cover it.
 - **Qwen is untested end to end** (I-5). The Qwen path is covered by mocked tests only; the advice text in the UI is template text.
@@ -333,14 +440,15 @@ All 44 areas ran rainfall-only because the store was empty (the BPBD page shows 
 - Flood labels are incomplete (unreported floods count as 0), so precision is probably understated.
 - Not re-run on 2026-11-12: the manual UI and Next.js route checks (4.7) and the headless-Chrome screenshot. The screenshot predates the
   `MapDashboard.tsx` change in 2.1.1, so the current UI has no screenshot.
-- No mobile, accessibility, load or security testing. A review of the code found open issues in these areas that no test covers yet
-  (cache of failed lookups, unbounded request variety, slow-LLM thread exhaustion).
+- No mobile, accessibility or security testing. A code review found open issues that no test covers yet (a failed lookup is cached for
+  10 minutes; every distinct `lat`/`lon` or date starts a new fetch). Load and speed are covered in 9.5 only within the limits listed there.
 - The BPBD scraper depends on one page layout. The parser fails loudly if the table changes; the test uses a snapshot from 2026-11-08.
 
-### 9.6 Recommendation
+### 9.7 Recommendation
 
 1. Fix I-4 (return 422 for an impossible date) and add a test for it.
 2. Fix I-1 (D3), a one-line condition, and re-run `tests/run_test_plan.py` as the release gate.
 3. Let the live collector run for 2 days, then repeat E2 and confirm `model_mode: full` appears.
 4. Start Ollama with the expected Qwen model and run `eval.evaluate agents` and `eval.check_agents` with Qwen on.
 5. Decide the user-facing risk labels and thresholds with the team (M5 and M6).
+6. Fix I-7 (cache the advice, shorter LLM timeout) and I-6 (one computation for concurrent identical requests), then rerun `eval.perf_test` and compare. Agree on targets (for example p95 for a cached heatmap) so the next run can pass or fail.

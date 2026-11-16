@@ -22,11 +22,11 @@ export const HeatmapLegend: React.FC<HeatmapLegendProps> = ({ minProbability, ma
           }}
         />
         <div className="flex justify-between px-0.5 text-[10.5px] font-mono text-slate-100">
-          <span>{minProbability === null ? 'Rendah' : `Rendah ${pct(minProbability)}`}</span>
-          <span>{maxProbability === null ? 'Tinggi' : `Tinggi ${pct(maxProbability)}`}</span>
+          <span>{minProbability === null ? 'Terendah' : `Terendah ${pct(minProbability)}`}</span>
+          <span>{maxProbability === null ? 'Tertinggi' : `Tertinggi ${pct(maxProbability)}`}</span>
         </div>
         <div className="px-0.5 text-[9.5px] leading-tight text-slate-400">
-          Probabilitas banjir (model), dibandingkan antar kecamatan pada hari yang sama.
+          Warna = peluang banjir (model) dibanding kecamatan lain pada hari yang sama, bukan luas genangan. Merah belum tentu kategori Tinggi: lihat kategori di panel kanan.
         </div>
       </div>
     </div>

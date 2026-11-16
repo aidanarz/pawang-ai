@@ -49,10 +49,10 @@ export const HydrographChart: React.FC<HydrographChartProps> = ({ data }) => {
       <div className="flex items-center justify-between text-[11px] mb-1.5 px-0.5">
         <span className="font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: strokeColor }} />
-          {isWaterLevelSeries ? 'Muka Air TMA (cm)' : 'Tinggi Banjir (cm)'}
+          {isWaterLevelSeries ? 'Muka air sungai/pintu air, maks. harian (cm)' : 'Tinggi Banjir (cm)'}
         </span>
         <span className="text-slate-500 dark:text-slate-400 font-mono text-[10px]">
-          Semua titik
+          {isWaterLevelSeries ? 'teramati, bukan tinggi genangan' : 'Semua titik'}
         </span>
       </div>
 

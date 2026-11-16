@@ -85,7 +85,7 @@ export const BrandingHeader: React.FC<BrandingHeaderProps> = ({
             <span className="text-slate-300 dark:text-slate-700">|</span>
             <div className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium text-[11px]">
               <CloudRain size={13} />
-              <span>{highRiskCount} Zona Siaga/Bahaya</span>
+              <span>{highRiskCount} Zona Risiko Tinggi</span>
             </div>
           </>
         )}

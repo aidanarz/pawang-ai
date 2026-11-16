@@ -20,6 +20,7 @@ export const TopStatusPill: React.FC<TopStatusPillProps> = ({
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
+          timeZone: 'Asia/Jakarta',
           timeZoneName: 'short',
         })
       );
@@ -50,12 +51,12 @@ export const TopStatusPill: React.FC<TopStatusPillProps> = ({
       {highRiskCount > 0 ? (
         <div className="flex items-center gap-1.5 text-black dark:text-slate-200 font-semibold text-[11px]">
           <CloudRain size={13} className="shrink-0" />
-          <span>{highRiskCount} Zona Siaga/Bahaya</span>
+          <span>{highRiskCount} Zona Risiko Tinggi</span>
         </div>
       ) : (
         <div className="flex items-center gap-1.5 text-black dark:text-slate-200 font-semibold text-[11px]">
           <ShieldCheck size={13} className="shrink-0" />
-          <span>Semua Zona Aman</span>
+          <span>Tidak ada zona risiko tinggi</span>
         </div>
       )}
     </div>
