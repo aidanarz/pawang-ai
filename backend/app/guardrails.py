@@ -13,11 +13,12 @@ CERTAINTY_PHRASES = (
     "pasti banjir", "pasti tidak banjir", "tidak akan banjir", "dijamin", "100%", "tanpa risiko",
     "aman sepenuhnya", "will definitely", "guaranteed", "no risk", "certainly flood", "certainly not",
 )
-RISK_WORDS_ID = {"low": "rendah", "medium": "sedang", "high": "tinggi", "unknown": "tidak diketahui"}
+RISK_WORDS_ID = {"low": "rendah", "medium": "sedang", "medium_high": "cukup tinggi", "high": "tinggi",
+                 "unknown": "tidak diketahui"}
 # Accepted wordings per level. "unknown" is a phrase, and small models paraphrase it; the others are single
 # words that must appear as written.
 RISK_PHRASES_ID = {
-    "low": ("rendah",), "medium": ("sedang",), "high": ("tinggi",),
+    "low": ("rendah",), "medium": ("sedang",), "medium_high": ("cukup tinggi",), "high": ("tinggi",),
     "unknown": ("tidak diketahui", "belum diketahui", "tidak dapat ditentukan", "belum dapat ditentukan"),
 }
 MAX_TEXT_CHARS = 420

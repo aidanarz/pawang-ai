@@ -190,7 +190,7 @@ class FailureHandler:
 class AdviceFacts:
     area_name: str
     target_date: dt.date
-    risk_level: str             # low | medium | high | unknown
+    risk_level: str             # low | medium | medium_high | high | unknown
     confidence: str             # HIGH | LOW
     rainfall_mm: float | None
     water_level_cm: float | None
@@ -240,6 +240,8 @@ TEMPLATES = {
              "Risiko tinggi: hindari jalan rendah dan genangan, tunda perjalanan dengan motor bila hujan deras."),
     "medium": ("Risiko banjir sedang di {a}. Tetap waspada dan pantau perkembangan cuaca.",
                "Risiko sedang: bawa jas hujan dan siapkan rute alternatif yang tidak melewati genangan."),
+    "medium_high": ("Risiko banjir cukup tinggi di {a}. Waspada, siapkan rute alternatif dan pantau info resmi BPBD.",
+                    "Risiko cukup tinggi: hindari jalan rendah dan genangan, bawa jas hujan, dan pertimbangkan menunda perjalanan."),
     "low": ("Risiko banjir rendah di {a}. Tetap pantau cuaca sebelum berangkat.",
             "Risiko rendah: perjalanan diperkirakan normal, tetap berhati-hati saat hujan."),
     "unknown": ("Risiko di {a} tidak diketahui karena data belum tersedia. Pantau info resmi BPBD.",

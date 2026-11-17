@@ -22,6 +22,14 @@ from .cache import TTLCache
 from .config import Settings
 from .llm import LLM
 from .waterlevel import SIAGA_RANK, WIB
+
+# The model's Medium band (0.8-3.3%) is split here. In the 2020 replay the flood rate was 1.6% just below this cut and
+# 4.1% just above it (base rate 2.9%). Display tier only: the model and its Low/High thresholds are unchanged.
+MEDIUM_HIGH_FROM = 0.0215
+
+
+def split_medium(level: str, p: float | None) -> str:
+    return "medium_high" if level == "medium" and p is not None and p >= MEDIUM_HIGH_FROM else level
 from .tools import ToolRegistry, ToolResult
 
 
@@ -29,7 +37,7 @@ from .tools import ToolRegistry, ToolResult
 class AreaResult:
     area: Kecamatan
     p_flood: float | None
-    risk_level: str            # low | medium | high | unknown
+    risk_level: str            # low | medium | medium_high | high | unknown
     model_mode: str | None     # full | rainfall_only | None
     model_version: str | None
     confidence: str            # HIGH | LOW
@@ -178,7 +186,8 @@ class Pipeline:
             r = row.iloc[0]
             mode = r["mode"] if isinstance(r["mode"], str) else None
             res.areas.append(AreaResult(
-                area=a, p_flood=_f(r["p_flood"]), risk_level=r["risk_level"], model_mode=mode,
+                area=a, p_flood=_f(r["p_flood"]), risk_level=split_medium(r["risk_level"], _f(r["p_flood"])),
+                model_mode=mode,
                 model_version=r["model_version"] if isinstance(r["model_version"], str) else None,
                 confidence="HIGH" if (mode == "full" and rain_v.ok and tma_v.ok) else "LOW",
                 rainfall_mm=_f(u["rain_d0"]) if u is not None else None,

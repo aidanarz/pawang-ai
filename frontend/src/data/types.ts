@@ -1,4 +1,4 @@
-export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Extreme' | 'Unknown';
+export type RiskLevel = 'Low' | 'Medium' | 'Medium-High' | 'High' | 'Extreme' | 'Unknown';
 
 export type TimeHorizon = '1h' | '3h' | '5h' | '12h' | '24h';
 

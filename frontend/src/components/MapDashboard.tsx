@@ -15,6 +15,7 @@ import { WATER_GATE_STATIONS, EVACUATION_CENTERS } from '@/data/floodData';
 import { DataSourceBanner } from './DataSourceBanner';
 import { RightSidebar } from './RightSidebar';
 import { HeatmapLegend } from './HeatmapLegend';
+import { dominantTier } from '@/utils/areaColors';
 import { MapControls } from './MapControls';
 import { SearchModal } from './SearchModal';
 import { TopStatusPill } from './TopStatusPill';
@@ -269,12 +270,6 @@ export const MapDashboard: React.FC = () => {
     (f) => f.properties.risk_level === 'High' || f.properties.risk_level === 'Extreme'
   ).length;
 
-  const probabilities = features
-    .map((f) => f.properties.flood_probability)
-    .filter((p): p is number => Number.isFinite(p));
-  const minProbability = probabilities.length ? Math.min(...probabilities) : null;
-  const maxProbability = probabilities.length ? Math.max(...probabilities) : null;
-
   // Demo layers (water gates, shelters, radar rings) have no real data source: hide them next to real data.
   const mapLayers = hasRealData
     ? { ...layers, waterGates: false, evacuation: false, radarPulse: false }
@@ -326,7 +321,7 @@ export const MapDashboard: React.FC = () => {
 
       {/* 4. Minimal heatmap legend above the source attribution */}
       <div className="absolute bottom-14 left-3 z-30">
-        <HeatmapLegend minProbability={minProbability} maxProbability={maxProbability} />
+        <HeatmapLegend dominant={dominantTier(features)} />
       </div>
 
       <Attribution />

@@ -405,3 +405,18 @@ def test_rain_probability_is_passed_through_from_open_meteo(live_settings):
 def test_rain_probability_is_null_without_a_source(replay_settings):
     r = client(replay_settings).get("/api/v1/analysis", params={"grid_id": "menteng", "date": FLOOD_DAY.isoformat()})
     assert r.json()["rain_probability_pct"] is None
+
+
+def test_medium_band_is_split_at_2_15_percent():
+    from app.pipeline import MEDIUM_HIGH_FROM, split_medium
+    assert split_medium("medium", MEDIUM_HIGH_FROM - 1e-6) == "medium"
+    assert split_medium("medium", MEDIUM_HIGH_FROM) == "medium_high"
+    # only the Medium band is split; Low, High and unknown stay as the model said
+    assert [split_medium(lv, 0.5) for lv in ("low", "high", "unknown")] == ["low", "high", "unknown"]
+    assert split_medium("medium", None) == "medium"
+
+
+def test_medium_high_advice_passes_the_guardrail_and_is_not_read_as_high():
+    from app.guardrails import check_text
+    assert check_text("Risiko banjir cukup tinggi di Menteng.", "medium_high", set()) == []
+    assert check_text("Risiko tinggi di Menteng.", "medium_high", set())   # wrong tier is rejected

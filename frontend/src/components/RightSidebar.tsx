@@ -29,6 +29,7 @@ import { Disclosure } from './Disclosure';
 import { RainForecast } from './RainForecast';
 import { rainCategory } from '@/utils/rainCategory';
 import { formatProbability } from '@/utils/formatProbability';
+import { colorAreas } from '@/utils/areaColors';
 
 interface RightSidebarProps {
   theme?: 'dark' | 'light';
@@ -74,6 +75,11 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   const riskClasses = analysis
     ? getRiskBadgeClasses(analysis.risk_level)
     : getRiskBadgeClasses('Medium');
+
+  // Same colour the map paints this area with (relative to the other areas on screen).
+  const mapColor = analysis
+    ? colorAreas(features).find((c) => c.feature.properties.grid_id === analysis.grid_id)?.color
+    : undefined;
 
   const siagaClasses = analysis
     ? getSiagaBadgeClasses(analysis.siaga_level)
@@ -282,7 +288,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
 
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span
-                    className={`text-[11px] font-bold ${riskClasses.text}`}
+                    className={`text-[11px] font-bold ${mapColor ? '' : riskClasses.text}`}
+                    style={mapColor ? { color: mapColor } : undefined}
                   >
                     {riskClasses.label}
                   </span>
@@ -290,7 +297,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                     className="flex flex-col items-end leading-none"
                     title="Peluang banjir menurut model, bukan persentase wilayah yang tergenang"
                   >
-                    <span className={`text-xl font-extrabold tabular-nums ${riskClasses.text}`}>
+                    <span
+                      className={`text-xl font-extrabold tabular-nums ${mapColor ? '' : riskClasses.text}`}
+                      style={mapColor ? { color: mapColor } : undefined}
+                    >
                       {formatProbability(analysis.flood_probability) ?? '–'}
                     </span>
                     <span className="mt-0.5 text-[9px] uppercase tracking-wider text-[#22396F] dark:text-[#BFDDF0]">
@@ -321,12 +331,13 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                       (misalnya 5-7%) sudah jauh di atas hari biasa. Bandingkan antar wilayah dan antar hari.
                     </li>
                     <li className="text-justify">
-                      <b>Risk</b> (Low / Medium / High): kategori dari persen tersebut. Makin tinggi persen, makin
-                      tinggi kategori. Ini perkiraan, bukan kepastian.
+                      <b>Risk</b> (Low / Medium / Medium-High / High): kategori dari persen tersebut, dengan batas tetap
+                      (Low di bawah 0,8%, Medium 0,8-2,15%, Medium-High 2,15-3,3%, High mulai 3,3%). Ini perkiraan,
+                      bukan kepastian.
                     </li>
                     <li className="text-justify">
-                      <b>Warna di peta</b>: peluang banjir <i>relatif</i> antar kecamatan hari itu (hijau = terendah,
-                      merah = tertinggi). Warna merah belum tentu kategori Tinggi.
+                      <b>Warna</b> (di peta dan pada angka risk ini) mengikuti kategori: hijau = Low, kuning = Medium,
+                      oranye = Medium-High, merah = High.
                     </li>
                     <li className="text-justify">
                       <b>Prakiraan 1h-24h</b>: model memprediksi per hari. Pilihan jam hanya menentukan hari mana yang
@@ -381,11 +392,13 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                     ? 'Data masukan belum lengkap, sehingga risiko banjir daerah ini tidak dapat dihitung.'
                     : analysis.risk_level === 'Extreme' || analysis.risk_level === 'High'
                     ? 'Model menilai peluang banjir di daerah ini tinggi dibanding hari-hari biasa. Pantau info resmi dan siapkan rencana.'
+                    : analysis.risk_level === 'Medium-High'
+                    ? 'Model menilai peluang banjir di daerah ini cukup tinggi, di atas rata-rata hari banjir tercatat. Waspada dan siapkan rute alternatif.'
                     : analysis.risk_level === 'Medium'
                     ? 'Model menilai peluang banjir di daerah ini sedang, di atas hari biasa. Tetap waspada.'
                     : 'Model menilai peluang banjir di daerah ini rendah. Ini perkiraan, bukan jaminan aman.'}
                 </p>
-                {(analysis.risk_level === 'Medium' || analysis.risk_level === 'High' || analysis.risk_level === 'Extreme') &&
+                {(analysis.risk_level === 'Medium' || analysis.risk_level === 'Medium-High' || analysis.risk_level === 'High' || analysis.risk_level === 'Extreme') &&
                   analysis.rainfall_mm < 1 && (
                     <p className="text-justify rounded-md bg-amber-500/15 p-2 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200 border border-amber-500/30">
                       <b>Mengapa berisiko padahal hampir tidak hujan?</b> Model tidak hanya melihat hujan hari
@@ -400,7 +413,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 </div>
                 <div className="grid grid-cols-2 gap-0 text-xs border-y border-[#22396F] dark:border-[#22396F]">
                   {/* Metric: Rainfall */}
-                  <div className="p-2.5 border-r border-b border-[#22396F] dark:border-[#22396F]">
+                  <div className="p-2.5 border-r border-[#22396F] dark:border-[#22396F]">
                     <div className="flex items-center gap-1.5 text-[#22396F] dark:text-[#BFDDF0] text-[10px] font-medium">
                       <Droplets size={12} className="text-[#8CC0EB] dark:text-[#FCF1D0]" />
                       <span title="Total curah hujan prakiraan untuk hari yang diprediksi">Curah Hujan (per hari)</span>
@@ -418,7 +431,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   </div>
 
                   {/* Metric: Water Level (TMA) */}
-                  <div className="p-2.5 border-b border-[#22396F] dark:border-[#22396F]">
+                  <div className="p-2.5">
                     <div className="flex items-center gap-1.5 text-[#22396F] dark:text-[#BFDDF0] text-[10px] font-medium">
                       <Clock size={12} className="text-[#8CC0EB] dark:text-[#FCF1D0]" />
                       <span title="Tinggi air di pos pemantau sungai/pintu air terdekat (TMA), bukan tinggi genangan di jalan">
@@ -436,35 +449,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                     >
                       {isNoRisk ? 'Aman' : analysis.siaga_level}
                     </span>
-                  </div>
-
-                  {/* Metric: Peak Time */}
-                  <div className="p-2.5 border-r border-[#22396F] dark:border-[#22396F]">
-                    <div className="text-[#22396F] dark:text-[#BFDDF0] text-[10px] font-medium">
-                      Estimasi Puncak
-                    </div>
-                    <div className="text-xs font-bold text-[#010736] dark:text-[#FCF1D0] mt-1">
-                      {analysis.peak_time}
-                    </div>
-                    <div className="text-[9.5px] text-[#22396F] dark:text-[#BFDDF0] mt-0.5">
-                      Prakiraan {timeHorizon}
-                    </div>
-                  </div>
-
-                  {/* Metric: Inundation Range */}
-                  <div className="p-2.5">
-                    <div
-                      className="text-[#22396F] dark:text-[#BFDDF0] text-[10px] font-medium"
-                      title="Perkiraan kedalaman air di permukaan jalan. Belum dihitung oleh sistem."
-                    >
-                      Tinggi Genangan
-                    </div>
-                    <div className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-1">
-                      {isNoRisk ? '0 cm' : analysis.inundation_range}
-                    </div>
-                    <div className="text-[9.5px] text-[#22396F] dark:text-[#BFDDF0] mt-0.5">
-                      Kedalaman Rata-rata
-                    </div>
                   </div>
                 </div>
 

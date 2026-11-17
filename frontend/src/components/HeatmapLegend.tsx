@@ -1,34 +1,39 @@
 'use client';
 
 import React from 'react';
+import { RISK_COLORS } from '@/utils/areaColors';
+import type { RiskLevel } from '@/data/types';
 
-interface HeatmapLegendProps {
-  /** Lowest and highest flood probability (0-1) among the areas on the map. Null while nothing is loaded. */
-  minProbability: number | null;
-  maxProbability: number | null;
-}
+// Batas dari model (Low/High) dan pemisahan Medium di backend (MEDIUM_HIGH_FROM).
+const TIERS = [
+  { risk: 'Low', label: 'Low', range: '< 0,8%' },
+  { risk: 'Medium', label: 'Medium', range: '0,8 - 2,15%' },
+  { risk: 'Medium-High', label: 'Medium-High', range: '2,15 - 3,3%' },
+  { risk: 'High', label: 'High', range: '≥ 3,3%' },
+] as const;
 
-const pct = (p: number) => `${(p * 100).toFixed(p < 0.1 ? 1 : 0)}%`;
+export const HeatmapLegend: React.FC<{ dominant?: RiskLevel | null }> = ({ dominant = null }) => (
 
-export const HeatmapLegend: React.FC<HeatmapLegendProps> = ({ minProbability, maxProbability }) => {
-  return (
-    <div className="w-64">
-      <div className="space-y-1 rounded-xl border border-[#22396F] bg-[#FFEBCC]/95 px-2.5 py-2 backdrop-blur-md shadow-md dark:border-[#22396F] dark:bg-[#0D1C42]/95 transition-colors">
-        <div
-          className="h-3.5 w-full overflow-hidden rounded-sm"
-          style={{
-            background:
-              'linear-gradient(to right, #22C55E 0%, #84CC16 22%, #EAB308 44%, #FACC15 58%, #F97316 74%, #EF4444 88%, #B91C1C 100%)',
-          }}
-        />
-        <div className="flex justify-between px-0.5 text-[10.5px] font-mono font-semibold text-[#010736] dark:text-[#FCF1D0]">
-          <span>{minProbability === null ? 'Terendah' : `Terendah ${pct(minProbability)}`}</span>
-          <span>{maxProbability === null ? 'Tertinggi' : `Tertinggi ${pct(maxProbability)}`}</span>
-        </div>
-        <div className="px-0.5 text-[9.5px] leading-tight text-[#22396F] dark:text-[#BFDDF0] text-justify">
-          Warna = peluang banjir (model) dibanding kecamatan lain pada hari yang sama, bukan luas genangan. Merah belum tentu kategori Tinggi: lihat kategori di panel kanan.
-        </div>
+  <div className="w-64">
+    <div className="space-y-1.5 rounded-xl border border-[#22396F] bg-[#FFEBCC]/95 px-2.5 py-2 backdrop-blur-md shadow-md dark:border-[#22396F] dark:bg-[#0D1C42]/95 transition-colors">
+      <ul className="space-y-1 text-[10.5px] font-semibold text-[#010736] dark:text-[#FCF1D0]">
+        {TIERS.map((t) => (
+          <li key={t.risk} className="flex items-center gap-2">
+            <span className="h-3 w-5 shrink-0 rounded-sm" style={{ backgroundColor: RISK_COLORS[t.risk] }} />
+            <span className="flex-1">{t.label}</span>
+            <span className="font-mono">{t.range}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="px-0.5 text-[9.5px] leading-tight text-[#22396F] dark:text-[#BFDDF0] text-justify">
+        Warna = kategori peluang banjir (model) untuk hari prakiraan, bukan luas genangan.
       </div>
+      {dominant && (
+        <div className="px-0.5 text-[9.5px] leading-tight text-[#22396F] dark:text-[#BFDDF0] text-justify">
+          Hampir semua area berkategori {dominant}. Warna tetap {dominant}; gelap = peluang relatif lebih tinggi
+          di antara area tersebut, terang = relatif lebih rendah. Bukan kategori yang lebih rendah.
+        </div>
+      )}
     </div>
-  );
-};
+  </div>
+);

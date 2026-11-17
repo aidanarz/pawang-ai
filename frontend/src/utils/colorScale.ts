@@ -44,9 +44,13 @@ export function getStyleForGrid(riskLevel: RiskLevel, floodProb: number, isSelec
       fillColor = '#EAB308';
       strokeColor = '#A16207';
       break;
-    case 'High':
+    case 'Medium-High':
       fillColor = '#F97316';
       strokeColor = '#C2410C';
+      break;
+    case 'High':
+      fillColor = '#EF4444';
+      strokeColor = '#B91C1C';
       break;
     case 'Extreme':
       fillColor = '#EF4444';
@@ -92,6 +96,14 @@ export function getRiskBadgeClasses(risk: RiskLevel): {
         border: 'border-yellow-400/40',
         dot: 'bg-yellow-500',
         label: 'Medium Risk',
+      };
+    case 'Medium-High':
+      return {
+        bg: 'bg-orange-500/15 dark:bg-orange-500/25',
+        text: 'text-orange-600 dark:text-orange-300',
+        border: 'border-orange-400/40',
+        dot: 'bg-orange-500',
+        label: 'Medium-High Risk',
       };
     case 'High':
       return {

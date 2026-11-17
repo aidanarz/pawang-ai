@@ -133,9 +133,6 @@ export const MapControls: React.FC<MapControlsProps> = ({
         {/* Layers Flyout Menu */}
         {showLayersMenu && (
           <div className="absolute left-full bottom-0 ml-2 rounded-xl p-3 shadow-2xl w-60 z-50 border border-[#22396F] bg-[#FFEBCC] text-[#010736] dark:border-[#22396F] dark:bg-[#0D1C42] dark:text-[#FCF1D0] animate-in fade-in zoom-in-95 duration-150">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-[#010736] dark:text-[#FCF1D0] mb-2.5 pb-1 border-b border-[#22396F] dark:border-[#22396F]">
-              Layer Aktif
-            </div>
             {hasRealData && (
               <div className="mb-2 text-[10px] leading-tight text-amber-700 dark:text-amber-300 text-justify">
                 Pintu air, posko, dan radar dimatikan: belum ada sumber data nyata untuk layer ini.

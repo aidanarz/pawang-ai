@@ -268,7 +268,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     if (!layers.heatmap) return;
 
     const group = L.featureGroup();
-    colorAreas(features).forEach(({ feature, color }) => {
+    colorAreas(features).forEach(({ feature, color, fillOpacity }) => {
       // GeoJSON is [lng, lat]; Leaflet wants [lat, lng]. interactive:false keeps map clicks for area selection.
       const ring = feature.geometry.coordinates[0].map(([lng, lat]) => [lat, lng] as [number, number]);
       L.polygon(ring, {
@@ -276,7 +276,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         weight: 1,
         opacity: 0.8,
         fillColor: color,
-        fillOpacity: 0.55,
+        fillOpacity,
         interactive: false,
       }).addTo(group);
     });

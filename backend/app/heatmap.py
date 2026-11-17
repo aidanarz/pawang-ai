@@ -16,7 +16,7 @@ import pandas as pd
 
 from .pipeline import AreaResult, PipelineResult
 
-RISK_TO_FRONTEND = {"low": "Low", "medium": "Medium", "high": "High", "unknown": "Unknown"}
+RISK_TO_FRONTEND = {"low": "Low", "medium": "Medium", "medium_high": "Medium-High", "high": "High", "unknown": "Unknown"}
 BADGE = {"HIGH": "Data lengkap", "LOW": "Data terbatas"}
 HALF_CELL_DEG = 0.012   # ~1.3 km half-width
 
