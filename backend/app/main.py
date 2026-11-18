@@ -26,6 +26,7 @@ from .config import Settings, get_settings
 from .llm import LLM, NoLLM, QwenClient
 from .pipeline import Pipeline
 from .predictor import get_predictor
+from .reports import RateLimited, ReportIn, ReportStore, demo_reports
 from .tools import ToolRegistry
 
 WIB = dt.timezone(dt.timedelta(hours=7))
@@ -62,6 +63,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
     tools = ToolRegistry(s, catalog, http=http)
     pipeline = Pipeline(s, tools, llm, TTLCache(s.cache_ttl_s), AuditLog(s.audit_dir, audit_enabled))
     advice_writer = AdviceWriter(llm)
+    reports = ReportStore(s.reports_store, s.reports_ttl_h, demo_reports(catalog) if s.reports_demo else None)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -75,7 +77,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
 
     app = FastAPI(title="Pawang AI backend", version="0.1.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-                       allow_methods=["GET"], allow_headers=["*"])
+                       allow_methods=["GET", "POST"], allow_headers=["*"])
     app.state.pipeline = pipeline
 
     # Optional background poller: builds the water-level history (the model needs yesterday's level) even when nobody
@@ -136,6 +138,24 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
                                                  a.rainfall_mm, a.water_level_cm))
         pipeline.audit.write(res.request_id, {"step": "advice", **advice.audit()})
         return H.analysis_response(res, a, {**advice.value, "decided_by": advice.decided_by})
+
+    @app.get("/api/v1/areas")
+    def areas() -> dict:
+        """Kecamatan names and ids, for the landing page search. No date needed."""
+        return {"areas": [{"grid_id": k.grid_id, "name": k.name, "lat": k.lat, "lon": k.lon}
+                          for k in sorted(catalog.all(), key=lambda k: k.name)]}
+
+    @app.get("/api/v1/reports")
+    def list_reports() -> dict:
+        return {"reports": reports.active()}
+
+    @app.post("/api/v1/reports", status_code=201)
+    def add_report(rep: ReportIn) -> dict:
+        area = catalog.nearest(rep.lat, rep.lon)
+        try:
+            return reports.add(rep, area.name, area.grid_id)
+        except RateLimited:
+            raise HTTPException(429, "Terlalu banyak laporan, coba lagi sebentar lagi.")
 
     return app
 

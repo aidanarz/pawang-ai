@@ -77,6 +77,12 @@ class Settings:
     # (the model needs yesterday's level). 0 = fetch only when a request needs it.
     tma_poll_s: float = field(default_factory=lambda: float(os.environ.get("PAWANG_TMA_POLL_S", "0")))
 
+    # Live crowd reports (app/reports.py)
+    reports_store: Path = field(default_factory=lambda: Path(
+        os.environ.get("PAWANG_REPORTS_STORE", str(BACKEND_DIR / "data" / "reports.jsonl"))))
+    reports_demo: bool = field(default_factory=lambda: _bool("PAWANG_REPORTS_DEMO", True))   # example reports on the map
+    reports_ttl_h: float = field(default_factory=lambda: float(os.environ.get("PAWANG_REPORTS_TTL_H", "6")))
+
     # Audit log (one JSON line per request): the raw material for log audits and agent training
     audit_dir: Path = field(default_factory=lambda: Path(
         os.environ.get("PAWANG_AUDIT_DIR", str(BACKEND_DIR / "logs"))))

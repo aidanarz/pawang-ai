@@ -12,3 +12,4 @@ backend/data/
 .pytest_cache/
 CLAUDE.local.md
 backend/eval/results/
+backend/data/reports.jsonl

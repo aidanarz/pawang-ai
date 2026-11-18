@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
   TimeHorizon,
@@ -15,6 +15,8 @@ import { WATER_GATE_STATIONS, EVACUATION_CENTERS } from '@/data/floodData';
 import { DataSourceBanner } from './DataSourceBanner';
 import { RightSidebar } from './RightSidebar';
 import { HeatmapLegend } from './HeatmapLegend';
+import { ReportModal, type ReportDraft } from './ReportModal';
+import { featureCenter, type LiveReport } from '@/data/reportConditions';
 import { dominantTier } from '@/utils/areaColors';
 import { MapControls } from './MapControls';
 import { SearchModal } from './SearchModal';
@@ -35,9 +37,10 @@ const LeafletMap = dynamic(
   }
 );
 
-export const MapDashboard: React.FC = () => {
+export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGridId }) => {
   // App States
-  const [selectedGridId, setSelectedGridId] = useState<string | null>(null);
+  const [selectedGridId, setSelectedGridId] = useState<string | null>(initialGridId ?? null);
+  const focusedInitial = useRef(false);
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
   const [timeHorizon, setTimeHorizon] = useState<TimeHorizon>('5h');
   const [features, setFeatures] = useState<GeoJSONGridFeature[]>([]);
@@ -60,6 +63,8 @@ export const MapDashboard: React.FC = () => {
   });
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [reports, setReports] = useState<LiveReport[]>([]);
+  const [reportDraft, setReportDraft] = useState<ReportDraft | null>(null);
 
   // Data source: 'loading' until the first heatmap answer, then 'backend' (model) or 'mock' (demo data).
   const [dataSource, setDataSource] = useState<DataSource>('loading');
@@ -169,6 +174,14 @@ export const MapDashboard: React.FC = () => {
         setDataSource(res.headers.get('x-pawang-source') === 'backend' ? 'backend' : 'mock');
         setTargetDate(json.metadata?.target_date ?? null);
         setFeatures(loaded);
+        // Opened from the landing page with ?area=: centre the map on that kecamatan, once.
+        const wanted = initialGridId ? loaded.find((f) => f.properties.grid_id === initialGridId) : undefined;
+        if (wanted && !focusedInitial.current) {
+          focusedInitial.current = true;
+          const [lat, lng] = featureCenter(wanted);
+          setMarkerPosition([lat, lng]);
+          window.dispatchEvent(new CustomEvent('pawang:flyto', { detail: { lat, lng, zoom: 13 } }));
+        }
         // Select the area with the highest flood probability when nothing valid is selected yet
         // (first load, or an ID that this data source does not have).
         setSelectedGridId((prev) => {
@@ -186,7 +199,7 @@ export const MapDashboard: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [timeHorizon, archiveDate, status]);
+  }, [timeHorizon, archiveDate, status, initialGridId]);
 
   // Fetch analysis data when the selected area, time horizon or archive day changes
   useEffect(() => {
@@ -209,6 +222,22 @@ export const MapDashboard: React.FC = () => {
       isMounted = false;
     };
   }, [selectedGridId, timeHorizon, archiveDate]);
+
+  // Live crowd reports: load now and refresh every minute (reports expire on the backend).
+  const loadReports = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/reports');
+      if (res.ok) setReports(((await res.json()) as { reports: LiveReport[] }).reports ?? []);
+    } catch (err) {
+      console.error('Error fetching reports:', err);
+    }
+  }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadReports();
+    const timer = setInterval(loadReports, 60_000);
+    return () => clearInterval(timer);
+  }, [loadReports]);
 
   // Forecast Timeline Simulation Loop
   useEffect(() => {
@@ -287,6 +316,7 @@ export const MapDashboard: React.FC = () => {
           waterGates={hasRealData ? [] : WATER_GATE_STATIONS}
           evacuationCenters={hasRealData ? [] : EVACUATION_CENTERS}
           onSelectGrid={handleSelectGrid}
+          reports={reports}
         />
       </div>
 
@@ -304,6 +334,20 @@ export const MapDashboard: React.FC = () => {
           onChangeArchiveDate={setArchiveDate}
         />
       </div>
+
+      {/* Report button: the other way in besides a double click on the map */}
+      <button
+        type="button"
+        disabled={features.length === 0}
+        onClick={() => {
+          const gridId = selectedGridId ?? features[0]?.properties.grid_id;
+          if (gridId) setReportDraft({ gridId });
+        }}
+        className="absolute left-4 top-4 z-30 flex items-center gap-1.5 rounded-xl border border-[#22396F] bg-[#FFEBCC]/95 px-3 py-2 text-xs font-bold text-[#010736] shadow-lg backdrop-blur-md hover:bg-[#FFF9D2] disabled:opacity-50 dark:bg-[#0D1C42]/95 dark:text-[#FCF1D0] dark:hover:bg-[#22396F]"
+        title="Laporkan kondisi jalan atau banjir saat ini"
+      >
+        Lapor kondisi
+      </button>
 
       {/* 3. Center-left map controls */}
       <div className="absolute left-4 top-1/2 z-30 -translate-y-1/2">
@@ -340,6 +384,21 @@ export const MapDashboard: React.FC = () => {
         onSelectRegionById={handleSelectGrid}
         onOpenSearchModal={() => setIsSearchOpen(true)}
       />
+
+      {reportDraft && (
+        <ReportModal
+          draft={reportDraft}
+          features={features}
+          onClose={() => setReportDraft(null)}
+          onSent={(report) => {
+            // Show it at once, like Waze; the next refresh brings the server's copy.
+            setReports((prev) => [...prev.filter((r) => r.id !== report.id), report]);
+            setMarkerPosition([report.lat, report.lon]);
+            setReportDraft(null);
+            loadReports();
+          }}
+        />
+      )}
 
       {/* 6. Spotlight Search Modal (⌘F / Ctrl+K) */}
       <SearchModal

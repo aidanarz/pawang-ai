@@ -29,7 +29,7 @@ import { Disclosure } from './Disclosure';
 import { RainForecast } from './RainForecast';
 import { rainCategory } from '@/utils/rainCategory';
 import { formatProbability } from '@/utils/formatProbability';
-import { colorAreas } from '@/utils/areaColors';
+import { RISK_COLORS, colorAreas } from '@/utils/areaColors';
 
 interface RightSidebarProps {
   theme?: 'dark' | 'light';
@@ -80,6 +80,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   const mapColor = analysis
     ? colorAreas(features).find((c) => c.feature.properties.grid_id === analysis.grid_id)?.color
     : undefined;
+
+  const highRiskAreas = features
+    .filter((f) => f.properties.risk_level === 'High' || f.properties.risk_level === 'Extreme')
+    .sort((a, b) => b.properties.flood_probability - a.properties.flood_probability);
 
   const siagaClasses = analysis
     ? getSiagaBadgeClasses(analysis.siaga_level)
@@ -470,17 +474,37 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   <span className="text-[10px] text-[#22396F] dark:text-[#BFDDF0] font-medium">Panduan Komuter</span>
                 </div>
 
-                {/* Commuter Action Advice */}
-                <div className="p-2.5 rounded-lg bg-[#BFDDF0]/40 dark:bg-[#22396F]/40 border border-[#22396F]/60 dark:border-[#22396F] flex items-start gap-2.5">
-                  <Car size={16} className="text-[#010736] dark:text-[#FCF1D0] shrink-0 mt-0.5" />
-                  <div className="text-xs w-full">
-                    <div className="font-bold text-[#010736] dark:text-[#FCF1D0] mb-0.5">
-                      Peringatan Pengendara:
-                    </div>
-                    <div className="text-justify text-[#0D1C42] dark:text-[#FCF1D0]/90 leading-relaxed font-medium">
-                      {analysis.recommendation}
-                    </div>
+                {/* Kecamatan with High risk (highest probability first) */}
+                <div className="p-2.5 rounded-lg bg-[#BFDDF0]/40 dark:bg-[#22396F]/40 border border-[#22396F]/60 dark:border-[#22396F]">
+                  <div className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-[#010736] dark:text-[#FCF1D0]">
+                    <Car size={16} className="shrink-0" />
+                    Kecamatan Risiko Tinggi ({highRiskAreas.length})
                   </div>
+                  {highRiskAreas.length === 0 ? (
+                    <div className="text-xs font-medium text-[#0D1C42] dark:text-[#FCF1D0]/90">
+                      Tidak ada kecamatan berisiko tinggi pada hari prakiraan ini.
+                    </div>
+                  ) : (
+                    <ul className="max-h-40 space-y-1 overflow-y-auto pr-1">
+                      {highRiskAreas.map((f) => (
+                        <li key={f.properties.grid_id}>
+                          <button
+                            type="button"
+                            onClick={() => onSelectRegionById(f.properties.grid_id)}
+                            className="flex w-full items-center justify-between rounded-md px-2 py-1 text-left text-xs font-medium text-[#010736] hover:bg-[#8CC0EB]/30 dark:text-[#FCF1D0] dark:hover:bg-[#22396F]"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: RISK_COLORS.High }} />
+                              {f.properties.area_name}
+                            </span>
+                            <span className="font-mono tabular-nums">
+                              {formatProbability(f.properties.flood_probability) ?? '–'}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
 
                 {/* Evacuation Route Advice */}

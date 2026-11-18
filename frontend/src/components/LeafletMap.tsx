@@ -9,6 +9,7 @@ import {
   EvacuationCenter,
 } from '@/data/types';
 import { colorAreas } from '@/utils/areaColors';
+import { REPORT_CONDITIONS, timeAgo, type LiveReport } from '@/data/reportConditions';
 import { JAKARTA_ADMIN_BOUNDARY } from '@/data/jakartaBoundary';
 
 interface LeafletMapProps {
@@ -24,7 +25,11 @@ interface LeafletMapProps {
   waterGates: WaterGateStation[];
   evacuationCenters: EvacuationCenter[];
   onSelectGrid: (gridId: string, position?: [number, number]) => void;
+  reports: LiveReport[];
 }
+
+const escapeHtml = (s: string) =>
+  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 
 const isPointInRing = (lng: number, lat: number, ring: number[][]): boolean => {
   let inside = false;
@@ -84,10 +89,12 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   waterGates,
   evacuationCenters,
   onSelectGrid,
+  reports,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef(features);
   const onSelectGridRef = useRef(onSelectGrid);
+  const reportsLayerRef = useRef<L.LayerGroup | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const areaLayerRef = useRef<L.FeatureGroup | null>(null);
@@ -133,6 +140,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     evacLayerRef.current = L.layerGroup().addTo(map);
     radarCircleLayerRef.current = L.layerGroup().addTo(map);
     selectedLocationLayerRef.current = L.layerGroup().addTo(map);
+    reportsLayerRef.current = L.layerGroup().addTo(map);
     jakartaBoundaryLayerRef.current = L.geoJSON(JAKARTA_ADMIN_BOUNDARY as GeoJSON.GeoJsonObject, {
       style: {
         color: 'red',
@@ -150,6 +158,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     window.addEventListener('pawang:zoomin', handleZoomIn);
     window.addEventListener('pawang:zoomout', handleZoomOut);
     window.addEventListener('pawang:reset', handleReset);
+    const handleFlyTo = (e: Event) => {
+      const { lat, lng, zoom } = (e as CustomEvent<{ lat: number; lng: number; zoom: number }>).detail;
+      map.flyTo([lat, lng], zoom, { duration: 1 });
+    };
+    window.addEventListener('pawang:flyto', handleFlyTo);
 
     let lastInspectionAt = 0;
     const inspectMapCoordinate = (event: L.LeafletMouseEvent) => {
@@ -195,6 +208,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       window.removeEventListener('pawang:zoomin', handleZoomIn);
       window.removeEventListener('pawang:zoomout', handleZoomOut);
       window.removeEventListener('pawang:reset', handleReset);
+      window.removeEventListener('pawang:flyto', handleFlyTo);
       map.off('dblclick', handleMapDoubleClick);
       areaLayerRef.current = null;
       map.remove();
@@ -406,6 +420,30 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       group.addLayer(circle);
     });
   }, [layers.radarPulse]);
+
+  // 9. Live crowd reports: a dot per report, coloured by the reported condition.
+  useEffect(() => {
+    const group = reportsLayerRef.current;
+    if (!group) return;
+    group.clearLayers();
+    reports.forEach((r) => {
+      const cond = REPORT_CONDITIONS.find((c) => c.value === r.condition);
+      if (!cond) return;
+      const icon = L.divIcon({
+        className: 'live-report-icon',
+        html: `<div style="width:18px;height:18px;border-radius:50%;background:${cond.color};border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)"></div>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+      const note = r.comment ? `<div style="margin-top:4px;font-size:12px">${escapeHtml(r.comment)}</div>` : '';
+      L.marker([r.lat, r.lon], { icon })
+        .bindPopup(
+          `<div style="font-size:12px"><div style="font-weight:800;color:${cond.color}">${cond.emoji} ${escapeHtml(cond.label)}</div>` +
+            `<div style="font-size:11px;color:#64748B">${escapeHtml(r.area_name)} - ${timeAgo(r.created_at)} - ${r.demo ? 'contoh data (dummy)' : 'laporan warga, belum diverifikasi'}</div>${note}</div>`
+        )
+        .addTo(group);
+    });
+  }, [reports]);
 
   // 8. Keep the location marker independent from the selected analysis grid.
   useEffect(() => {

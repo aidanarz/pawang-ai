@@ -420,3 +420,63 @@ def test_medium_high_advice_passes_the_guardrail_and_is_not_read_as_high():
     from app.guardrails import check_text
     assert check_text("Risiko banjir cukup tinggi di Menteng.", "medium_high", set()) == []
     assert check_text("Risiko tinggi di Menteng.", "medium_high", set())   # wrong tier is rejected
+
+
+# ---- live crowd reports ------------------------------------------------------------------------------
+REPORT = {"lat": -6.2, "lon": 106.82, "condition": "banjir", "comment": "air setinggi lutut"}
+
+
+def test_report_is_stored_tagged_with_the_nearest_area_and_listed(replay_settings):
+    c = client(replay_settings)
+    r = c.post("/api/v1/reports", json=REPORT)
+    assert r.status_code == 201 and r.json()["area_name"] and r.json()["condition"] == "banjir"
+    assert [x["id"] for x in c.get("/api/v1/reports").json()["reports"]] == [r.json()["id"]]
+
+
+def test_reports_survive_a_restart_but_not_past_the_ttl(replay_settings):
+    client(replay_settings).post("/api/v1/reports", json=REPORT)
+    assert len(client(replay_settings).get("/api/v1/reports").json()["reports"]) == 1
+    old = json.loads(replay_settings.reports_store.read_text().splitlines()[0])
+    old["created_at"] = "2000-01-01T00:00:00+00:00"
+    replay_settings.reports_store.write_text(json.dumps(old) + "\n")
+    assert client(replay_settings).get("/api/v1/reports").json()["reports"] == []
+
+
+def test_bad_reports_are_rejected(replay_settings):
+    c = client(replay_settings)
+    for bad in ({**REPORT, "condition": "tsunami"}, {**REPORT, "lat": 10.0}, {**REPORT, "comment": "x" * 281}):
+        assert c.post("/api/v1/reports", json=bad).status_code == 422
+    assert c.get("/api/v1/reports").json()["reports"] == []
+
+
+def test_report_flood_is_rate_limited(replay_settings):
+    from app.reports import MAX_PER_MINUTE
+    c = client(replay_settings)
+    codes = [c.post("/api/v1/reports", json=REPORT).status_code for _ in range(MAX_PER_MINUTE + 1)]
+    assert codes[:-1] == [201] * MAX_PER_MINUTE and codes[-1] == 429
+
+
+def test_a_report_does_not_change_the_prediction(replay_settings):
+    c = client(replay_settings)
+    day = {"date": FLOOD_DAY.isoformat()}
+    before = c.get("/api/v1/heatmap", params=day).json()["features"]
+    c.post("/api/v1/reports", json=REPORT)
+    after = c.get("/api/v1/heatmap", params=day).json()["features"]
+    assert [f["properties"]["flood_probability"] for f in before] == [f["properties"]["flood_probability"] for f in after]
+
+
+def test_demo_reports_are_listed_flagged_recent_and_not_saved(replay_settings):
+    from dataclasses import replace
+    c = client(replace(replay_settings, reports_demo=True))
+    demo = c.get("/api/v1/reports").json()["reports"]
+    assert len(demo) >= 5 and all(r["demo"] and r["area_name"] for r in demo)
+    assert {r["condition"] for r in demo} == {"aman", "basah", "genangan_rendah", "banjir"}
+    c.post("/api/v1/reports", json=REPORT)
+    assert len(c.get("/api/v1/reports").json()["reports"]) == len(demo) + 1
+    assert len(replay_settings.reports_store.read_text().splitlines()) == 1     # only the real one is on disk
+
+
+def test_areas_lists_every_kecamatan_with_a_usable_grid_id(replay_settings):
+    j = client(replay_settings).get("/api/v1/areas").json()["areas"]
+    assert len(j) == 44 and [a["name"] for a in j] == sorted(a["name"] for a in j)
+    assert get_catalog(str(replay_settings.models_dir)).by_grid_id(j[0]["grid_id"]) is not None

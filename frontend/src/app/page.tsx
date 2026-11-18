@@ -1,5 +1,5 @@
-import { MapDashboard } from '@/components/MapDashboard';
+import { Landing } from '@/components/Landing';
 
 export default function Home() {
-  return <MapDashboard />;
+  return <Landing />;
 }
