@@ -4,6 +4,11 @@ Structure follows the IEEE 829 test documentation outline (sections 1-9).
 Suites re-run on **2026-11-12, 14:40-14:45 (WIB, +0700)**. Items that could not be re-run are marked **carried over** (taken from
 the earlier version of this report, dated 2026-11-08/09) or **not run**. Nothing in this report is estimated.
 
+**Update 2026-11-16 (Qwen run, 10:09-10:45 WIB):** the agent drill was run with a real `qwen3.5:4b` on Ollama
+(sections 4.9, 9.8): Agent 1, Agent 2 and the advice writer all used Qwen's answer in **100% of 51 decisions**. Incident I-5 is closed;
+a broken Ollama update found on the way is logged as I-8, and Qwen running on the CPU after the reinstall as I-9. Automated suites were re-run on `alt-branch` commit `afeb3e3`
+(all pass, section 7).
+
 ## 1. Introduction
 
 Pawang AI predicts flood risk per kecamatan (44 areas of DKI Jakarta) and shows it on a map. The system has four parts:
@@ -43,9 +48,10 @@ In scope: data validation, model quality, inference contract, robustness, backen
 scraper, frontend logic and build, live-mode end-to-end with the real internet.
 
 Also in scope since the performance run: speed under different circumstances and a stress test of the backend (section 4.8).
+Also in scope since 2026-11-16: the agents with a real Qwen model (section 4.9).
 
 Out of scope (not tested at all): mobile, accessibility, security testing; frontend rendering speed; long soak tests and memory
-growth; Qwen output quality; the full model in live mode (needs about 2 days of BPBD history, see 9.6).
+growth; human rating of Qwen's advice texts (guardrails check wording and numbers only); the full model in live mode (needs about 2 days of BPBD history, see 9.6).
 
 ### 2.3 Approach
 
@@ -54,7 +60,7 @@ growth; Qwen output quality; the full model in live mode (needs about 2 days of 
 | Model | `tests/run_test_plan.py` on the real data (23 checks, in a temporary copy of `data/`); `pytest` (37 tests) |
 | Backend unit and integration | `pytest` (61 tests) with mocked Open-Meteo, mocked BPBD, scripted fake LLM |
 | Backend system | `eval.evaluate system --year 2020`: the whole backend replayed over 366 days against recorded floods |
-| Agents | `eval.check_agents`: 28 pass/fail checks, rules only |
+| Agents | `eval.check_agents`: 28 pass/fail checks, rules only; `eval.evaluate agents --repeats 3`: 17 scenarios with a real Qwen |
 | Frontend | `vitest` (18 tests), `tsc --noEmit`, `eslint`, `next build` |
 | Performance and stress | `eval.perf_test`: timings in process, slow mocked Open-Meteo, a real server under 1-100 concurrent clients, a slow fake LLM |
 | End to end | real backend in live mode with the real Open-Meteo and BPBD, queried over HTTP |
@@ -64,7 +70,11 @@ Pass criteria are in the test cases (section 4). No code was changed to make a c
 ### 2.4 Resources
 
 Windows 11 Home 10.0.26300, Python 3.12.10, Node 22.12.0, internet access during the live check. **Ollama was not reachable**
-(`http://localhost:11434` returned no answer), so no test with a real Qwen could run.
+(`http://localhost:11434` returned no answer), so no test with a real Qwen could run on that day.
+
+2026-11-16 Qwen run: Windows laptop of Reyhan Batara, `backend/.venv` with Python 3.14, Ollama 0.40.16 (reinstalled, see I-8),
+model `qwen3.5:4b` (3.3 GB), called through the native `/api/chat` with `think: false`, `format: json`, temperature 0.
+2026-11-16 re-run of the automated suites: Linux cloud container, Python 3.13, Node 22.
 
 ### 2.5 Schedule
 
@@ -73,11 +83,15 @@ Windows 11 Home 10.0.26300, Python 3.12.10, Node 22.12.0, internet access during
 | 2026-11-08, 11-09 | manual end-to-end checks while building (carried over, section 4.7) |
 | 2026-11-12 14:40-14:45 | all automated suites, production build, live check (this run) |
 | 2026-11-12 15:13-15:15 | performance and stress test (this run) |
+| 2026-11-08 18:32-18:49 | first Qwen agent drills while building the agents (carried over, 9.8) |
+| 2026-11-16 10:09-10:45 | Qwen agent drill on `1befd03` (agent code identical on `alt-branch`) |
+| 2026-11-16 10:50 | automated suites re-run on `alt-branch` `afeb3e3` |
 
 ### 2.6 Personnel
 
-Executed by Claude Code (an AI assistant) in a session on the workstation of the repository owner (git user `aidanarz`). The
-person responsible for the project's test results is to be confirmed by the team.
+2026-11-12: executed by Claude Code (an AI assistant) on the workstation of the repository owner (git user `aidanarz`).
+2026-11-16 Qwen drill: executed by Reyhan Batara (Agentic AI & backend) on his laptop, guided by Claude; automated re-run by Claude
+in a cloud container. The person responsible for the project's test results is to be confirmed by the team.
 
 ## 3. Test design
 
@@ -189,6 +203,17 @@ have no pass/fail line**. Errors (any answer other than HTTP 200, or no answer w
 | P-C2 | stress, real server, replay | heatmap cache hit with 1 / 10 / 50 / 100 clients (200 requests each); heatmap cache miss (new day each request) with 10 / 50 clients (100 requests); analysis cache hit with 50 clients; 50 clients asking for the **same** uncached day at once |
 | P-D | slow LLM, real server with a fake Ollama that answers after 3 s | 10 / 40 / 80 users reading the analysis at once, while one more client reloads the heatmap (which needs no LLM) |
 
+### 4.9 Agents with a real Qwen (`eval.evaluate agents --repeats 3`)
+
+| Agent | Scenarios | Pass criterion (per decision) |
+|---|---|---|
+| Agent 1, data fetch | water level available / unavailable (2) | Qwen's plan passes guardrails (only available tools, required tools present) and is used; agrees with the rules |
+| Agent 2, failure handler | the 6 failure scenarios of 4.3 | Qwen's action is in the allowed set and is used; agrees with the rules |
+| Advice writer | 7 risk/confidence combinations for today + 2 for tomorrow (9) | text passes guardrails: risk word matches the model, no invented numbers, no certainty claim, correct day word, rain wording matches the BMKG category, no agency named as forecast source |
+
+17 scenarios x 3 repeats = 51 decisions. Metric: share of decisions where Qwen's reply passed the guardrails and was used; otherwise
+the deterministic rule is used. Target set in `backend/` docs: Agent 1 and 2 at least 95%, advice writer at least 85%, 0 parse errors.
+
 ## 5. Test procedures
 
 Run from the repository root. Python commands use the project's installed environment.
@@ -204,7 +229,7 @@ cd ../backend
 python -m pytest -q                       # 61 tests, no network
 QWEN_ENABLED=false python -m eval.check_agents      # 28 agent checks
 python -m eval.evaluate system --year 2020          # about 50 s
-QWEN_ENABLED=true  python -m eval.evaluate agents --repeats 1   # needs Ollama with qwen3.5:4b
+QWEN_ENABLED=true  python -m eval.evaluate agents --repeats 3   # needs Ollama with qwen3.5:4b (about 6 min on a laptop)
 
 # 3. Frontend
 cd ../frontend
@@ -258,6 +283,19 @@ All times 2026-11-12, WIB. Tester: Claude Code. Location: the repository worksta
 | 14:43 | `curl http://localhost:11434` | no answer |
 | 15:13-15:15 | `eval.perf_test` (1 min 42 s, one run) | completed, 0 request errors; two weaknesses found (incidents I-6, I-7) |
 
+All times 2026-11-16, WIB. Tester: Reyhan Batara (laptop, Windows) and Claude (cloud container).
+
+| Time | Activity | Result |
+|---|---|---|
+| 10:08 | `ollama list`; branch `integrating-fe-be-model` pulled to `1befd03` | `qwen3.5:4b` present |
+| 10:09 | `eval.evaluate agents --repeats 3` | **0 of 51** decisions used Qwen: Ollama answered HTTP 500 to every call in about 50 ms; all 51 fell back to the rules, no request failed (incident I-8) |
+| 10:10 | `ollama run qwen3.5:4b` | `500: llama-server binary not found`: the auto-update to 0.40.16 left the install without its model runner |
+| 10:34-10:38 | Ollama reinstalled (stopped running Ollama processes first; the installer's first try failed with "Access is denied" while they ran) | `llama-server.exe` present; `ollama run` answers in Indonesian |
+| 10:38-10:45 | `eval.evaluate agents --repeats 3` | **51 of 51 decisions used Qwen**; 0 guardrail rejections; 0 parse errors |
+| 10:50 | `alt-branch` `afeb3e3` (cloud): backend `pytest`, `eval.check_agents`, model `pytest`, frontend `vitest`, `tsc` | 63 passed; 28 / 28; 37 passed; 20 / 20; clean |
+| 10:50 | diff of agent code `1befd03`..`afeb3e3` | no change in `llm.py`, `agents.py`, `guardrails.py`, `prompts.py`, `eval/evaluate.py` |
+| 10:59 | `ollama ps` (laptop) | `qwen3.5:4b`, 3.1 GB, **PROCESSOR 100% CPU**, context 4096 (incident I-9) |
+
 ## 8. Test incident report
 
 | ID | Found by | Description | Severity | Status / next step |
@@ -266,8 +304,10 @@ All times 2026-11-12, WIB. Tester: Claude Code. Location: the repository worksta
 | I-2 | D4 | In the 2017 source file 67 of 264 flood records (25%) have a blank date; only 85.6% of day-rows have a valid day (other years 99.7-100%). | P2 | Open. Data limit: ask the data owner for a complete 2017 file, or document it |
 | I-3 | F2 | `build_tma` merges a renamed station whose level steps by +500 cm without any warning. | P2 | Open. Warn when the median level changes by more than a set amount at the rename date |
 | I-4 | E5 | `GET /api/v1/heatmap?date=2020-02-31` returns HTTP 500. The date passes the `YYYY-MM-DD` regex, then `date.fromisoformat` raises `ValueError: day is out of range for month` (`backend/app/main.py`, `resolve_date`). Expected 422. | P2 | Open. Catch `ValueError` and return 422 |
-| I-5 | agent drill | Ollama is not running, so the Qwen path of Agents 1, 2 and the advice writer was not exercised. Every decision used the rules. | P2 (test gap) | Open. Start Ollama with `qwen3.5:4b` (or set `QWEN_MODEL`) and rerun `eval.evaluate agents` |
+| I-5 | agent drill | Ollama was not running on 2026-11-12, so the Qwen path of Agents 1, 2 and the advice writer was not exercised. | P2 (test gap) | **Closed 2026-11-16.** Rerun with a real `qwen3.5:4b`: 51 / 51 decisions used Qwen (9.8) |
 | I-6 | P-C2 | When 50 clients ask for the same uncached day at once, the server computes it 50 times: p50 6.3 s, 7.3 req/s, against 0.11 s for one client. The cache stores a result only after it is finished, and nothing makes concurrent requests wait for the first one. | P2 | Open. Per-key lock so concurrent misses wait for the first result |
+| I-8 | Qwen drill 2026-11-16 | Ollama's automatic update to 0.40.16 left `llama-server.exe` missing; every model call returned HTTP 500. The backend kept working: all 51 decisions fell back to the rules with no failed request. | P3 (environment) | **Closed.** Ollama reinstalled. Note for the demo machine: check `ollama run qwen3.5:4b` after any Ollama update |
+| I-9 | `ollama ps` 2026-11-16 10:59 | After the Ollama reinstall, `qwen3.5:4b` runs 100% on the CPU. Agent latency rose about 8-9 times against 2026-11-08 on the same laptop (advice p50 10.5 s vs 1.1 s). | P2 (environment, affects demo) | Open. Check that the GPU driver is seen (`nvidia-smi`), restart Ollama, read `%LOCALAPPDATA%\Ollama\server.log` for GPU detection, then rerun the drill |
 | I-7 | P-D | With a slow LLM (3 s), 80 users reading the analysis at once make a heatmap reload that needs no LLM wait up to 5.1 s (40 users: 2.0 s). Each analysis request holds one of the server's 40 worker threads while it waits for the LLM, so other requests queue. | P1 | Open. Cache the advice with the pipeline result, shorter LLM timeout, skip the LLM for a while after a timeout |
 
 Test runner bugs fixed while building the plan (not product bugs): a cache date range in D3 and a text-based heuristic in F2.
@@ -286,7 +326,8 @@ Test runner bugs fixed while building the plan (not product bugs): a cache date 
 | Frontend vitest | 18 / 18 pass |
 | `tsc`, `eslint`, `next build` | clean, clean, completed |
 | Live end to end (E1-E5) | 4 pass, **1 fail (E5)** |
-| Qwen agent drill | **not run** (Ollama unreachable) |
+| Qwen agent drill (2026-11-16, real `qwen3.5:4b`, 51 decisions) | **Agent 1 100%, Agent 2 100%, advice writer 100%** used Qwen; 0 rejections, 0 parse errors (9.8) |
+| Re-run on `alt-branch` `afeb3e3` (2026-11-16) | backend 63 / 63, agent check 28 / 28, model 37 / 37, frontend 20 / 20, `tsc` clean |
 | Performance and stress | completed, 0 errors in all scenarios; **2 weaknesses** (I-6, I-7), see 9.5 |
 
 ### 9.2 Model quality (from `run_test_plan.py`)
@@ -430,11 +471,14 @@ What it shows:
 What this run does not cover: memory growth and long soak tests; a load generator on a separate machine; live mode through the real
 network under load (B uses a mock); the frontend and the Next.js proxy under load; a real Qwen (the fake answers with an invalid
 reply every time, so the advice always falls back to the template after the delay); repeated runs to measure the spread between runs.
+**Note from 2026-11-16:** the real `qwen3.5:4b` on the test laptop took about 10.5 s per advice text (9.8), far above the 3 s used in
+scenario D, so I-7 would appear at fewer concurrent users in practice.
 
 ### 9.6 Known limits of this testing
 
 - **The full model has never run in live mode on real data.** It needs about 2 days of BPBD history (`PAWANG_TMA_POLL_S=1800`). Only fixtures cover it.
-- **Qwen is untested end to end** (I-5). The Qwen path is covered by mocked tests only; the advice text in the UI is template text.
+- **Qwen was tested through the agent drill only** (9.8): 17 fixed scenarios, not every situation, and not yet through the UI with live
+  data. Guardrails check wording and numbers, not how good the advice is; the team has not rated the texts (`human_rating`).
 - Today's water level is the maximum so far today, while the model trained on whole days. This bias is not measured.
 - Training rainfall is reanalysis and inference uses forecasts. No forecast archive exists, so this mismatch is not tested.
 - Flood labels are incomplete (unreported floods count as 0), so precision is probably understated.
@@ -449,6 +493,40 @@ reply every time, so the advice always falls back to the template after the dela
 1. Fix I-4 (return 422 for an impossible date) and add a test for it.
 2. Fix I-1 (D3), a one-line condition, and re-run `tests/run_test_plan.py` as the release gate.
 3. Let the live collector run for 2 days, then repeat E2 and confirm `model_mode: full` appears.
-4. Start Ollama with the expected Qwen model and run `eval.evaluate agents` and `eval.check_agents` with Qwen on.
+4. Done for the agents (I-5 closed). Next: have the team rate `advice_to_rate_20261116-1045.csv`, and fix I-9 so Qwen runs on the
+   GPU again (`ollama ps` must not show `100% CPU`), then rerun `eval.evaluate agents` to record the latency.
 5. Decide the user-facing risk labels and thresholds with the team (M5 and M6).
 6. Fix I-7 (cache the advice, shorter LLM timeout) and I-6 (one computation for concurrent identical requests), then rerun `eval.perf_test` and compare. Agree on targets (for example p95 for a cached heatmap) so the next run can pass or fail.
+
+### 9.8 Agents with a real Qwen (`qwen3.5:4b`, prompts `2026-11-08.3`, 17 scenarios x 3 repeats)
+
+| Run | Agent 1 | Agent 2 | Advice writer | Guardrail rejects | Parse errors | Latency p50 / p95 |
+|---|---|---|---|---|---|---|
+| **2026-11-16 10:45** (commit `1befd03`, agent code = `afeb3e3`) | **100%** | **100%** | **100%** | 0 | 0 | A1 5.27 / 5.43 s · A2 4.31 / 4.66 s · advice 10.47 / 11.37 s |
+| 2026-11-08 18:49 (carried over, before the date fix) | 100% | 100% | 89% | 11% (one reply x3) | 0 | A1 0.64 / 0.76 s · A2 0.50 / 0.59 s · advice 1.13 / 1.36 s |
+| 2026-11-16 10:09 (broken Ollama, I-8) | 0% | 0% | 0% | 0 | 0 | HTTP 500 in about 50 ms; all fell back to the rules |
+
+Agreement with the rules: Agent 1 and Agent 2 chose exactly what the deterministic rules would have chosen in every decision.
+
+Sample advice texts from the 2026-11-16 run (full list: `backend/eval/results/advice_to_rate_20261116-1045.csv`, local only):
+
+| Case | Recommendation | Commuter advisory |
+|---|---|---|
+| high / HIGH, today | Risiko banjir tinggi di Kampung Melayu untuk hari ini. Tunda perjalanan atau hindari jalan rendah. | Diperkirakan hujan ringan dengan curah 11.4 mm pada hari ini. Gunakan rute alternatif dan pantau info resmi BPBD. |
+| medium / LOW, tomorrow | Risiko banjir sedang di Menteng untuk besok, namun data terbatas sehingga perkiraan ini belum pasti. | Besok diperkirakan hujan ringan sekitar 2.5 mm. Waspada genangan dan siapkan rute alternatif jika perlu. |
+| unknown / LOW, today | Data terbatas sehingga risiko banjir di Jatinegara saat ini tidak diketahui. Hindari jalan rendah dan pantau info resmi BPBD. | Karena kepercayaan rendah, perjalanan normal sebaiknya ditunda hingga ada update prakiraan yang lebih jelas. |
+
+What this means:
+
+- **Qwen now makes every agent decision and every advice text in the drill**, and never left the safe set: the advice writer moved
+  from 89% to 100% because the date false positive found on 2026-11-08 was fixed. Results were identical across the 3 repeats.
+- **The guardrails held**: the texts name the right day ("hari ini" / "besok"), use the BMKG rain category, never call the forecast
+  BMKG's, never quote a gauge value as flood depth, and say "data terbatas" when confidence is LOW.
+- **The system survives a broken LLM**: in the 10:09 run every model call failed and the platform still answered every decision
+  with the rules (I-8).
+- **Latency is the weak point.** On 2026-11-16 Qwen was about 8-9 times slower than on 2026-11-08 on the same laptop (advice
+  10.5 s vs 1.1 s). **Cause confirmed** at 10:59: `ollama ps` shows `qwen3.5:4b` running **100% on the CPU** after the reinstall
+  (incident I-9). Combined with I-7, slow advice is the main risk for the demo until the GPU is used again.
+- Open points the guardrails cannot judge, for the team's rating: "hujan ringan" next to a `high` risk (the risk also comes from
+  30 days of rain and the water level), "tidak hujan dengan curah 0.3 mm" (correct by BMKG, reads oddly), and postponing travel
+  when the risk is only `unknown`.
