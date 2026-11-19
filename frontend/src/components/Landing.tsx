@@ -3,7 +3,19 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPinned, ChevronDown, ExternalLink } from 'lucide-react';
+import {
+  MapPinned,
+  ExternalLink,
+  ArrowUpRight,
+  Cpu,
+  ShieldCheck,
+  Map as MapIcon,
+  Menu,
+  X,
+  Sun,
+  Moon,
+  AlertTriangle,
+} from 'lucide-react';
 import { AreaSearch } from './AreaSearch';
 import { RISK_COLORS } from '@/utils/areaColors';
 
@@ -52,22 +64,26 @@ const TIERS = [
 const STEPS = [
   {
     num: '01',
-    title: 'Ambil Data',
+    lead: 'Ambil',
+    big: 'data.',
     desc: 'Sistem mengumpulkan hujan prakiraan dari Open-Meteo, tinggi muka air dari BPBD, dan elevasi tiap kecamatan dari Copernicus DEM secara otomatis setiap hari.',
   },
   {
     num: '02',
-    title: 'Hitung Peluang',
+    lead: 'Hitung',
+    big: 'peluang.',
     desc: 'Model regresi logistik yang dilatih dari data 2016–2020 menghitung peluang banjir untuk 44 kecamatan DKI Jakarta. Jika TMA tidak tersedia, dipakai model hujan-elevasi saja.',
   },
   {
     num: '03',
-    title: 'Beri Kategori',
-    desc: 'Peluang dikategorikan menjadi empat warna (Low · Medium · Medium-High · High) berdasarkan ambang batas yang dikalibrasi dari data historis banjir.',
+    lead: 'Beri',
+    big: 'kategori.',
+    desc: 'Peluang dikelompokkan menjadi empat warna (Low · Medium · Medium-High · High) berdasarkan ambang batas yang dikalibrasi dari data historis banjir.',
   },
   {
     num: '04',
-    title: 'Tulis Saran',
+    lead: 'Tulis',
+    big: 'saran.',
     desc: 'Agen AI (Qwen via Ollama) menyusun saran singkat per kecamatan dengan pagar aturan ketat—tidak boleh mengarang angka atau klaim kepastian. Bila gagal, dipakai teks saran baku.',
   },
 ] as const;
@@ -79,11 +95,68 @@ const STATS = [
   { value: '62+', label: 'Automated tests' },
 ] as const;
 
+const ABOUT = [
+  {
+    icon: Cpu,
+    tint: 'bg-[#E8F0FE] text-[#1A73E8] dark:bg-[#1A73E8]/20 dark:text-[#8AB4F8]',
+    title: 'Model ML',
+    desc: 'Regresi logistik terregularisasi yang dilatih dari 5 tahun data historis banjir DKI. Dua varian: full (dengan TMA) dan rainfall_only (tanpa TMA). Mode auto memilih model terbaik sesuai ketersediaan data.',
+  },
+  {
+    icon: ShieldCheck,
+    tint: 'bg-[#E6F4EA] text-[#188038] dark:bg-[#34A853]/20 dark:text-[#81C995]',
+    title: 'Agen AI Berguardrail',
+    desc: 'LLM Qwen (self-hosted via Ollama) hanya menulis teks naratif—tidak pernah menghitung angka. Semua output difilter pagar aturan ketat; bila melanggar, sistem jatuh ke teks saran deterministik yang aman.',
+  },
+  {
+    icon: MapIcon,
+    tint: 'bg-[#FEF7E0] text-[#B06000] dark:bg-[#F9AB00]/20 dark:text-[#FDD663]',
+    title: 'Dashboard Interaktif',
+    desc: 'Peta choropleth berbasis Leaflet menampilkan warna risiko tiap kecamatan. Klik kecamatan untuk melihat peluang, prakiraan hujan, tinggi muka air, dan saran. Warga juga bisa melaporkan kondisi lapangan.',
+  },
+] as const;
+
+const STACK = [
+  'Next.js 15', 'TypeScript', 'Tailwind CSS', 'FastAPI', 'Python',
+  'Scikit-learn', 'Qwen (Ollama)', 'Leaflet', 'Pandas', 'NumPy',
+];
+
+const NAV_LINKS = [
+  { href: '#cara-kerja', label: 'Cara Kerja' },
+  { href: '#mengapa', label: 'Mengapa Penting' },
+  { href: '#sumber-data', label: 'Sumber Data' },
+  { href: '#tentang', label: 'Tentang' },
+];
+
+/* ─────────────────────── shared bits ─────────────────────────── */
+
+/** Tombol pill besar ala halaman Shinkansen: label + ikon tautan di kanan */
+const PillLink: React.FC<{
+  href: string;
+  children: React.ReactNode;
+  variant?: 'primary' | 'ghost';
+  onClick?: () => void;
+}> = ({ href, children, variant = 'primary', onClick }) => (
+  <Link
+    href={href}
+    onClick={onClick}
+    className={
+      variant === 'primary'
+        ? 'relative inline-flex h-14 items-center justify-center gap-3 rounded-full bg-[#1A73E8] pl-8 pr-14 text-base font-semibold text-white shadow-[0_12px_32px_rgba(26,115,232,0.35)] transition hover:bg-[#1765CC] sm:h-16 sm:text-lg dark:bg-[#8AB4F8] dark:text-[#202124] dark:shadow-[0_12px_32px_rgba(138,180,248,0.25)] dark:hover:bg-[#AECBFA]'
+        : 'relative inline-flex h-14 items-center justify-center gap-3 rounded-full border border-[#DADCE0] bg-white pl-8 pr-14 text-base font-semibold text-[#202124] shadow-sm transition hover:bg-[#F8F9FA] sm:h-16 sm:text-lg dark:border-[#5F6368] dark:bg-[#292A2D] dark:text-[#E8EAED] dark:hover:bg-[#35363A]'
+    }
+  >
+    {children}
+    <ArrowUpRight size={22} className="absolute right-5" aria-hidden />
+  </Link>
+);
+
 /* ─────────────────────── component ─────────────────────────── */
 
 export const Landing: React.FC = () => {
   const [isDark, setIsDark] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showToast, setShowToast] = useState(true);
 
   /* sync dengan tema yang sudah disimpan di map */
   useEffect(() => {
@@ -106,23 +179,15 @@ export const Landing: React.FC = () => {
     } catch { /* ignore */ }
   };
 
-  /* ── nav helpers ── */
-  const NAV_LINKS = [
-    { href: '#cara-kerja', label: 'Cara Kerja' },
-    { href: '#sumber-data', label: 'Sumber Data' },
-    { href: '#tentang', label: 'Tentang' },
-  ];
+  const eyebrow =
+    'mb-3 inline-block text-xs font-semibold uppercase tracking-[0.18em] text-[#1A73E8] dark:text-[#8AB4F8]';
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-[#FFF9D2] text-[#010736] dark:bg-[#010736] dark:text-[#FCF1D0]">
+    <div className="min-h-screen w-full overflow-x-hidden bg-white text-[#202124] dark:bg-[#202124] dark:text-[#E8EAED]">
 
-      {/* ══════════════════════════════════════════
-          STICKY HEADER
-      ══════════════════════════════════════════ */}
-      <header className="sticky top-0 z-50 w-full border-b border-[#22396F]/30 bg-[#010736] shadow-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-8">
-
-          {/* Logo + wordmark */}
+      {/* ══════════════ HEADER ══════════════ */}
+      <header className="sticky top-0 z-50 w-full border-b border-[#DADCE0] bg-white/95 backdrop-blur dark:border-[#3C4043] dark:bg-[#202124]/95">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3 sm:px-8">
           <Link href="/" className="flex items-center gap-3">
             <Image
               src="/pawang-logo.png"
@@ -131,18 +196,15 @@ export const Landing: React.FC = () => {
               height={40}
               className="rounded-full"
             />
-            <span className="text-lg font-extrabold tracking-tight text-[#FCF1D0]">
-              Pawang AI
-            </span>
+            <span className="text-lg font-semibold tracking-tight">Pawang AI</span>
           </Link>
 
-          {/* Desktop nav */}
-          <nav className="hidden items-center gap-6 md:flex">
+          <nav className="hidden items-center gap-7 md:flex">
             {NAV_LINKS.map(l => (
               <a
                 key={l.href}
                 href={l.href}
-                className="text-sm font-medium text-[#BFDDF0] transition hover:text-white"
+                className="text-sm font-medium text-[#5F6368] transition hover:text-[#1A73E8] dark:text-[#9AA0A6] dark:hover:text-[#8AB4F8]"
               >
                 {l.label}
               </a>
@@ -150,40 +212,36 @@ export const Landing: React.FC = () => {
             <button
               onClick={toggleTheme}
               aria-label="Ganti tema"
-              className="rounded-full border border-[#22396F] bg-[#0D1C42] px-3 py-1.5 text-xs font-semibold text-[#FCF1D0] transition hover:bg-[#22396F]"
+              className="grid h-10 w-10 place-items-center rounded-full border border-[#DADCE0] text-[#5F6368] transition hover:bg-[#F8F9FA] dark:border-[#5F6368] dark:text-[#9AA0A6] dark:hover:bg-[#292A2D]"
             >
-              {isDark ? '☀ Light' : '🌙 Dark'}
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             <Link
               href="/map"
-              className="rounded-full bg-[#8CC0EB] px-5 py-2 text-sm font-bold text-[#010736] shadow transition hover:brightness-110"
+              className="rounded-full bg-[#1A73E8] px-6 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#1765CC] dark:bg-[#8AB4F8] dark:text-[#202124] dark:hover:bg-[#AECBFA]"
             >
-              Buka Dashboard →
+              Buka Dashboard
             </Link>
           </nav>
 
-          {/* Mobile hamburger */}
           <button
-            className="flex flex-col gap-1.5 p-2 md:hidden"
+            className="grid h-10 w-10 place-items-center rounded-full text-[#202124] md:hidden dark:text-[#E8EAED]"
             onClick={() => setMenuOpen(v => !v)}
             aria-label="Menu"
           >
-            <span className="block h-0.5 w-6 bg-[#FCF1D0]" />
-            <span className="block h-0.5 w-6 bg-[#FCF1D0]" />
-            <span className="block h-0.5 w-6 bg-[#FCF1D0]" />
+            {menuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
 
-        {/* Mobile dropdown */}
         {menuOpen && (
-          <div className="border-t border-[#22396F]/40 bg-[#0D1C42] px-6 py-4 md:hidden">
-            <ul className="space-y-3">
+          <div className="border-t border-[#DADCE0] bg-white px-6 py-5 md:hidden dark:border-[#3C4043] dark:bg-[#292A2D]">
+            <ul className="space-y-4">
               {NAV_LINKS.map(l => (
                 <li key={l.href}>
                   <a
                     href={l.href}
                     onClick={() => setMenuOpen(false)}
-                    className="block text-sm font-medium text-[#BFDDF0] hover:text-white"
+                    className="block text-base font-medium text-[#202124] dark:text-[#E8EAED]"
                   >
                     {l.label}
                   </a>
@@ -192,252 +250,263 @@ export const Landing: React.FC = () => {
               <li>
                 <button
                   onClick={() => { toggleTheme(); setMenuOpen(false); }}
-                  className="text-sm font-medium text-[#BFDDF0] hover:text-white"
+                  className="flex items-center gap-2 text-base font-medium text-[#5F6368] dark:text-[#9AA0A6]"
                 >
-                  {isDark ? '☀ Light mode' : '🌙 Dark mode'}
+                  {isDark ? <Sun size={18} /> : <Moon size={18} />}
+                  {isDark ? 'Mode terang' : 'Mode gelap'}
                 </button>
               </li>
             </ul>
             <Link
               href="/map"
               onClick={() => setMenuOpen(false)}
-              className="mt-4 block rounded-full bg-[#8CC0EB] py-2 text-center text-sm font-bold text-[#010736]"
+              className="mt-5 block rounded-full bg-[#1A73E8] py-3 text-center text-sm font-semibold text-white dark:bg-[#8AB4F8] dark:text-[#202124]"
             >
-              Buka Dashboard →
+              Buka Dashboard
             </Link>
           </div>
         )}
       </header>
 
-      {/* ══════════════════════════════════════════
-          HERO
-      ══════════════════════════════════════════ */}
-      <section className="relative min-h-[85vh] overflow-hidden bg-[#010736]">
-        {/* flood photo */}
-        <Image
-          src="/jakarta-flood.jpg"
-          alt="Banjir Jakarta"
-          fill
-          className="object-cover object-center opacity-30"
-          priority
-        />
-        {/* gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#010736]/60 via-[#010736]/40 to-[#010736]" />
-
-        {/* hero content */}
-        <div className="relative z-10 mx-auto flex min-h-[85vh] max-w-6xl flex-col justify-center px-6 py-24 sm:px-12">
-          <div className="max-w-2xl">
-            {/* eyebrow */}
-            <span className="mb-4 inline-block rounded-full border border-[#8CC0EB]/60 bg-[#0D1C42]/80 px-4 py-1 text-xs font-semibold tracking-widest text-[#8CC0EB] uppercase">
-              Prediksi Banjir Jakarta
+      {/* ══════════════ FLOATING CTA (ala "Book now") ══════════════ */}
+      {showToast && (
+        <div className="fixed bottom-5 right-4 z-40 sm:bottom-8 sm:right-8">
+          <button
+            type="button"
+            onClick={() => setShowToast(false)}
+            aria-label="Tutup"
+            className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-[#202124] text-white shadow dark:bg-[#E8EAED] dark:text-[#202124]"
+          >
+            <X size={14} />
+          </button>
+          <Link
+            href="/map"
+            className="flex items-center gap-3 rounded-full border border-[#DADCE0] bg-white py-3 pl-4 pr-5 shadow-[0_16px_48px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 dark:border-[#3C4043] dark:bg-[#292A2D]"
+          >
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-[#1A73E8] text-white dark:bg-[#8AB4F8] dark:text-[#202124]">
+              <MapPinned size={20} aria-hidden />
             </span>
+            <span className="leading-tight">
+              <span className="block text-base font-semibold sm:text-lg">Cek peta sekarang</span>
+              <span className="block text-xs text-[#5F6368] dark:text-[#9AA0A6]">
+                Gratis, tanpa daftar
+              </span>
+            </span>
+            <ArrowUpRight size={20} className="text-[#5F6368] dark:text-[#9AA0A6]" aria-hidden />
+          </Link>
+        </div>
+      )}
 
-            {/* headline */}
-            <h1 className="mb-6 text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-6xl">
-              Pantau Risiko Banjir&nbsp;
-              <span className="text-[#8CC0EB]">44 Kecamatan</span>
-              <br />Jakarta Hari Ini
+      {/* ══════════════ HERO ══════════════ */}
+      <section className="bg-white dark:bg-[#202124]">
+        <div className="mx-auto max-w-6xl px-5 pb-16 pt-14 sm:px-8 sm:pt-20 md:pb-24">
+          {/* judul */}
+          <div className="max-w-4xl">
+            <span className={eyebrow}>Prediksi Banjir Jakarta</span>
+            <p className="text-2xl font-normal tracking-tight text-[#5F6368] sm:text-4xl dark:text-[#9AA0A6]">
+              Pantau risiko banjir
+            </p>
+            <h1 className="mt-1 text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl lg:text-[88px]">
+              44 kecamatan<br />
+              <span className="text-[#1A73E8] dark:text-[#8AB4F8]">hari ini.</span>
             </h1>
-
-            {/* sub */}
-            <p className="mb-10 text-justify text-base leading-relaxed text-[#BFDDF0] sm:text-lg">
+            <p className="mt-8 max-w-xl text-base leading-relaxed text-[#5F6368] sm:text-lg dark:text-[#9AA0A6]">
               Pawang AI menggabungkan prakiraan hujan, tinggi muka air sungai, dan elevasi
               wilayah untuk menghitung peluang banjir setiap hari—disajikan lewat peta
               interaktif yang bisa dicek siapa saja, kapan saja.
             </p>
+          </div>
 
-            {/* CTA */}
-            <div className="flex flex-col gap-4 sm:flex-row">
+          {/* kartu pencarian */}
+          <div className="mt-10 max-w-2xl rounded-3xl border border-[#DADCE0] bg-white p-5 shadow-[0_8px_40px_rgba(60,64,67,0.15)] sm:p-6 dark:border-[#3C4043] dark:bg-[#292A2D] dark:shadow-none">
+            <p className="mb-3 text-sm font-semibold">Cari kecamatan Anda</p>
+            <AreaSearch />
+            <div className="my-4 flex items-center gap-3 text-xs text-[#5F6368] dark:text-[#9AA0A6]">
+              <span className="h-px flex-1 bg-[#DADCE0] dark:bg-[#3C4043]" />
+              atau
+              <span className="h-px flex-1 bg-[#DADCE0] dark:bg-[#3C4043]" />
+            </div>
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
               <Link
                 href="/map"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#8CC0EB] px-8 py-4 text-base font-bold text-[#010736] shadow-lg transition hover:brightness-110"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-[#1A73E8] hover:underline dark:text-[#8AB4F8]"
               >
-                <MapPinned size={18} /> Buka Dashboard Peta
+                <MapPinned size={16} aria-hidden /> Pilih langsung di peta
               </Link>
-              <a
-                href="#cara-kerja"
-                className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#8CC0EB] px-8 py-4 text-base font-semibold text-[#8CC0EB] transition hover:bg-[#8CC0EB]/10"
-              >
-                Pelajari Cara Kerja <ChevronDown size={16} />
-              </a>
+              <ul className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Legenda risiko">
+                {TIERS.map(t => (
+                  <li key={t.name} className="flex items-center gap-1.5 text-xs text-[#5F6368] dark:text-[#9AA0A6]">
+                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: t.color }} />
+                    {t.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* foto + logo besar di kanan foto (tanpa gradient) */}
+          <div className="mt-14 flex flex-col items-stretch gap-6 md:mt-20 md:flex-row md:gap-10">
+            <div className="relative h-64 w-full overflow-hidden rounded-[28px] shadow-xl sm:h-80 md:h-[460px] md:flex-1">
+              <Image
+                src="/jakarta-flood.jpg"
+                alt="Banjir Jakarta"
+                fill
+                priority
+                sizes="(min-width: 768px) 60vw, 100vw"
+                className="object-cover object-center"
+              />
+            </div>
+            <div className="flex items-center justify-center md:w-[34%] md:shrink-0">
+              <Image
+                src="/pawang-logo.png"
+                alt="Pawang AI"
+                width={420}
+                height={420}
+                priority
+                className="h-auto w-48 rounded-full sm:w-64 md:w-full md:max-w-[380px]"
+              />
             </div>
           </div>
         </div>
-
-        {/* scroll hint */}
-        <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 animate-bounce text-[#8CC0EB]">
-          <ChevronDown size={28} />
-        </div>
       </section>
 
-      {/* ══════════════════════════════════════════
-          QUICK SEARCH / CTA BAR
-      ══════════════════════════════════════════ */}
-      <section className="bg-[#FFEBCC] px-4 py-8 dark:bg-[#0D1C42]">
-        <div className="mx-auto max-w-2xl space-y-3">
-          <p className="text-center text-sm font-semibold text-[#010736] dark:text-[#FCF1D0]">
-            Cari kecamatan langsung:
-          </p>
-          <AreaSearch />
-          <div className="flex items-center gap-3 text-xs text-[#22396F] dark:text-[#BFDDF0]">
-            <span className="h-px flex-1 bg-current opacity-30" />atau<span className="h-px flex-1 bg-current opacity-30" />
-          </div>
-          <Link
-            href="/map"
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#22396F] bg-[#8CC0EB] px-4 py-2.5 text-sm font-bold text-[#010736] shadow-md hover:brightness-105 dark:bg-[#22396F] dark:text-[#FCF1D0]"
-          >
-            <MapPinned size={16} aria-hidden /> Pilih langsung di peta
-          </Link>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════
-          STATS BAR
-      ══════════════════════════════════════════ */}
-      <section className="border-y border-[#22396F]/20 bg-[#010736] py-10">
-        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 px-6 sm:grid-cols-4">
+      {/* ══════════════ STATS ══════════════ */}
+      <section className="border-y border-[#DADCE0] bg-[#F8F9FA] py-14 dark:border-[#3C4043] dark:bg-[#292A2D]">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-6 sm:px-8 md:grid-cols-4">
           {STATS.map(s => (
-            <div key={s.label} className="text-center">
-              <p className="text-3xl font-extrabold text-[#8CC0EB] sm:text-4xl">{s.value}</p>
-              <p className="mt-1 text-xs leading-snug text-[#BFDDF0]">{s.label}</p>
+            <div key={s.label}>
+              <p className="text-5xl font-semibold tracking-tight text-[#1A73E8] sm:text-6xl dark:text-[#8AB4F8]">
+                {s.value}
+              </p>
+              <p className="mt-2 max-w-[14rem] text-sm leading-snug text-[#5F6368] dark:text-[#9AA0A6]">
+                {s.label}
+              </p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════
-          CARA KERJA
-      ══════════════════════════════════════════ */}
-      <section id="cara-kerja" className="px-4 py-20 dark:bg-[#010736]">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-12 text-center">
-            <span className="mb-2 inline-block text-xs font-bold tracking-widest text-[#8CC0EB] uppercase">Pipeline</span>
-            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Bagaimana Pawang AI Bekerja?</h2>
-            <p className="mx-auto mt-3 max-w-xl text-justify text-sm leading-relaxed text-[#0D1C42] dark:text-[#BFDDF0]">
-              Dari pengambilan data mentah hingga saran yang bisa dibaca warga—semua berjalan
-              otomatis setiap hari tanpa campur tangan manual.
-            </p>
-          </div>
+      {/* ══════════════ CARA KERJA ══════════════ */}
+      <section id="cara-kerja" className="bg-white px-5 py-24 sm:px-8 md:py-32 dark:bg-[#202124]">
+        <div className="mx-auto max-w-6xl">
+          <span className={eyebrow}>Pipeline</span>
+          <h2 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight sm:text-6xl">
+            Bagaimana Pawang AI bekerja?
+          </h2>
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
+            Dari pengambilan data mentah hingga saran yang bisa dibaca warga—semua berjalan
+            otomatis setiap hari tanpa campur tangan manual.
+          </p>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <ol className="mt-16 divide-y divide-[#DADCE0] border-y border-[#DADCE0] dark:divide-[#3C4043] dark:border-[#3C4043]">
             {STEPS.map(s => (
-              <div
+              <li
                 key={s.num}
-                className="rounded-2xl border border-[#22396F]/40 bg-white/70 p-6 shadow-sm dark:bg-[#0D1C42]/80"
+                className="grid gap-6 py-10 md:grid-cols-[1.2fr_1fr] md:items-center md:gap-16 md:py-14"
               >
-                <span className="mb-3 block text-5xl font-black text-[#22396F]/20 dark:text-[#8CC0EB]/20">
-                  {s.num}
-                </span>
-                <h3 className="mb-2 text-base font-extrabold text-[#010736] dark:text-[#FCF1D0]">{s.title}</h3>
-                <p className="text-justify text-xs leading-relaxed text-[#0D1C42] dark:text-[#BFDDF0]">{s.desc}</p>
-              </div>
+                <div>
+                  <span className="text-sm font-semibold text-[#1A73E8] dark:text-[#8AB4F8]">
+                    Langkah {s.num}
+                  </span>
+                  <p className="mt-2 text-2xl text-[#5F6368] sm:text-4xl dark:text-[#9AA0A6]">{s.lead}</p>
+                  <h3 className="text-5xl font-semibold leading-none tracking-tight sm:text-7xl">
+                    {s.big}
+                  </h3>
+                </div>
+                <p className="max-w-lg text-base leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
+                  {s.desc}
+                </p>
+              </li>
             ))}
-          </div>
+          </ol>
 
-          {/* kategori warna */}
-          <div className="mt-10 rounded-2xl border border-[#22396F]/40 bg-white/70 p-6 dark:bg-[#0D1C42]/80">
-            <h3 className="mb-4 text-sm font-extrabold text-[#010736] dark:text-[#FCF1D0]">
-              Kategori Risiko &amp; Ambang Batas Peluang
-            </h3>
-            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* kategori */}
+          <div className="mt-16 rounded-3xl bg-[#F8F9FA] p-6 sm:p-10 dark:bg-[#292A2D]">
+            <h3 className="text-xl font-semibold sm:text-2xl">Kategori risiko &amp; ambang batas peluang</h3>
+            <ul className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
               {TIERS.map(t => (
                 <li
                   key={t.name}
-                  className="flex items-center gap-3 rounded-xl border border-[#22396F]/30 px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-full border border-[#DADCE0] bg-white px-4 py-3 dark:border-[#3C4043] dark:bg-[#202124]"
                 >
-                  <span
-                    className="h-4 w-4 shrink-0 rounded"
-                    style={{ backgroundColor: t.color }}
-                  />
-                  <span className="text-xs">
-                    <b className="block text-[#010736] dark:text-[#FCF1D0]">{t.name}</b>
-                    <span className="text-[#0D1C42] dark:text-[#BFDDF0]">{t.range}</span>
+                  <span className="h-4 w-4 shrink-0 rounded-full" style={{ backgroundColor: t.color }} />
+                  <span className="text-sm leading-tight">
+                    <b className="block font-semibold">{t.name}</b>
+                    <span className="text-[#5F6368] dark:text-[#9AA0A6]">{t.range}</span>
                   </span>
                 </li>
               ))}
             </ul>
-            <p className="mt-4 rounded-lg bg-amber-500/10 p-3 text-justify text-xs leading-relaxed text-amber-900 dark:text-amber-200">
-              <b>Catatan penting:</b> Ini adalah perkiraan, bukan kepastian. Pada evaluasi data
-              2020, model menangkap sekitar separuh kejadian banjir berkategori High, dan hanya
-              ≈1 dari 6 peringatan High yang benar-benar banjir. Selalu cek info resmi BPBD DKI.
-            </p>
+            <div className="mt-6 flex gap-3 rounded-2xl bg-[#FEF7E0] p-4 text-sm leading-relaxed text-[#7A4F01] dark:bg-[#F9AB00]/10 dark:text-[#FDD663]">
+              <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden />
+              <p className="max-w-prose">
+                <b>Catatan penting:</b> Ini adalah perkiraan, bukan kepastian. Pada evaluasi data
+                2020, model menangkap sekitar separuh kejadian banjir berkategori High, dan hanya
+                ≈1 dari 6 peringatan High yang benar-benar banjir. Selalu cek info resmi BPBD DKI.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════
-          HERO SPLIT — foto + teks
-      ══════════════════════════════════════════ */}
-      <section className="bg-[#FFEBCC] dark:bg-[#0D1C42]">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-10 px-6 py-16 md:flex-row md:gap-16">
-          {/* foto */}
-          <div className="relative h-64 w-full overflow-hidden rounded-2xl shadow-xl md:h-80 md:w-1/2 md:shrink-0">
-            <Image
-              src="/jakarta-flood.jpg"
-              alt="Banjir Jakarta"
-              fill
-              className="object-cover object-center"
-            />
-          </div>
-          {/* teks */}
-          <div className="flex-1">
-            <span className="mb-2 inline-block text-xs font-bold tracking-widest text-[#22396F] dark:text-[#8CC0EB] uppercase">
-              Mengapa penting?
-            </span>
-            <h2 className="mb-4 text-2xl font-extrabold leading-snug tracking-tight text-[#010736] dark:text-[#FCF1D0] sm:text-3xl">
-              Jakarta Banjir Setiap Tahun—<br />Warga Butuh Informasi Dini
-            </h2>
-            <p className="text-justify text-sm leading-relaxed text-[#0D1C42] dark:text-[#BFDDF0]">
+      {/* ══════════════ MENGAPA PENTING ══════════════ */}
+      <section id="mengapa" className="bg-[#F8F9FA] px-5 py-24 sm:px-8 md:py-32 dark:bg-[#292A2D]">
+        <div className="mx-auto max-w-6xl">
+          <span className={eyebrow}>Mengapa penting?</span>
+          <p className="text-2xl text-[#5F6368] sm:text-5xl dark:text-[#9AA0A6]">Jakarta banjir</p>
+          <h2 className="text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl lg:text-[104px]">
+            setiap tahun.
+          </h2>
+          <div className="mt-12 grid gap-8 md:grid-cols-2 md:gap-16">
+            <p className="max-w-lg text-base leading-relaxed text-[#5F6368] sm:text-lg dark:text-[#9AA0A6]">
               Banjir bukan sekadar genangan—ia menghentikan mobilitas, merusak harta benda, dan
               membahayakan nyawa. Namun informasi risiko per wilayah sering kali terlambat
               sampai ke warga. Pawang AI hadir sebagai jembatan antara data teknis cuaca dan
               kebutuhan warga akan informasi yang mudah dipahami, satu hari lebih awal.
             </p>
-            <p className="mt-3 text-justify text-sm leading-relaxed text-[#0D1C42] dark:text-[#BFDDF0]">
+            <p className="max-w-lg text-base leading-relaxed text-[#5F6368] sm:text-lg dark:text-[#9AA0A6]">
               Dengan menggabungkan prakiraan cuaca, sensor tinggi muka air, dan model statistik
               berbasis 5 tahun data historis, sistem ini menyediakan peta risiko harian yang
               bisa diakses publik—gratis, transparan, dan terbuka.
             </p>
           </div>
+          <div className="mt-12">
+            <PillLink href="/map">
+              <MapPinned size={20} aria-hidden /> Buka Dashboard Peta
+            </PillLink>
+          </div>
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════
-          SUMBER DATA
-      ══════════════════════════════════════════ */}
-      <section id="sumber-data" className="px-4 py-20 dark:bg-[#010736]">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-10 text-center">
-            <span className="mb-2 inline-block text-xs font-bold tracking-widest text-[#8CC0EB] uppercase">Transparansi</span>
-            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Sumber Data</h2>
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-[#0D1C42] dark:text-[#BFDDF0]">
-              Semua sumber bersifat terbuka dan dapat diverifikasi siapa saja.
-            </p>
-          </div>
+      {/* ══════════════ SUMBER DATA ══════════════ */}
+      <section id="sumber-data" className="bg-white px-5 py-24 sm:px-8 md:py-32 dark:bg-[#202124]">
+        <div className="mx-auto max-w-6xl">
+          <span className={eyebrow}>Transparansi</span>
+          <h2 className="text-4xl font-semibold tracking-tight sm:text-6xl">Sumber data</h2>
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
+            Semua sumber bersifat terbuka dan dapat diverifikasi siapa saja.
+          </p>
 
-          <div className="overflow-hidden rounded-2xl border border-[#22396F]/40 bg-white/70 dark:bg-[#0D1C42]/80">
-            <table className="w-full text-sm">
+          <div className="mt-10 overflow-x-auto rounded-3xl border border-[#DADCE0] dark:border-[#3C4043]">
+            <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
-                <tr className="border-b border-[#22396F]/30 bg-[#010736] text-left text-xs font-semibold text-[#FCF1D0]">
-                  <th className="px-5 py-3">Sumber</th>
-                  <th className="px-5 py-3">Kegunaan dalam Sistem</th>
-                  <th className="px-5 py-3">Tautan</th>
+                <tr className="bg-[#F8F9FA] text-xs font-semibold uppercase tracking-wider text-[#5F6368] dark:bg-[#292A2D] dark:text-[#9AA0A6]">
+                  <th className="px-6 py-4">Sumber</th>
+                  <th className="px-6 py-4">Kegunaan dalam sistem</th>
+                  <th className="px-6 py-4">Tautan</th>
                 </tr>
               </thead>
               <tbody>
-                {SOURCES.map((s, i) => (
-                  <tr
-                    key={s.name}
-                    className={`border-b border-[#22396F]/20 ${i % 2 === 1 ? 'bg-[#BFDDF0]/20 dark:bg-[#22396F]/10' : ''}`}
-                  >
-                    <td className="px-5 py-3 font-bold text-[#010736] dark:text-[#FCF1D0]">{s.name}</td>
-                    <td className="px-5 py-3 text-justify text-[#0D1C42] dark:text-[#BFDDF0]">{s.use}</td>
-                    <td className="px-5 py-3">
+                {SOURCES.map(s => (
+                  <tr key={s.name} className="border-t border-[#DADCE0] dark:border-[#3C4043]">
+                    <td className="px-6 py-4 font-semibold">{s.name}</td>
+                    <td className="px-6 py-4 text-[#5F6368] dark:text-[#9AA0A6]">{s.use}</td>
+                    <td className="px-6 py-4">
                       <a
                         href={s.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[#22396F] underline underline-offset-2 hover:text-[#010736] dark:text-[#8CC0EB] dark:hover:text-white"
+                        className="inline-flex items-center gap-1 font-medium text-[#1A73E8] hover:underline dark:text-[#8AB4F8]"
                       >
                         Kunjungi <ExternalLink size={12} />
                       </a>
@@ -450,58 +519,34 @@ export const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════
-          TENTANG
-      ══════════════════════════════════════════ */}
-      <section id="tentang" className="bg-[#FFEBCC] px-4 py-20 dark:bg-[#0D1C42]">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-10 text-center">
-            <span className="mb-2 inline-block text-xs font-bold tracking-widest text-[#22396F] dark:text-[#8CC0EB] uppercase">Tentang Proyek</span>
-            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Apa Itu Pawang AI?</h2>
+      {/* ══════════════ TENTANG ══════════════ */}
+      <section id="tentang" className="bg-[#F8F9FA] px-5 py-24 sm:px-8 md:py-32 dark:bg-[#292A2D]">
+        <div className="mx-auto max-w-6xl">
+          <span className={eyebrow}>Tentang proyek</span>
+          <h2 className="text-4xl font-semibold tracking-tight sm:text-6xl">Apa itu Pawang AI?</h2>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {ABOUT.map(a => (
+              <div
+                key={a.title}
+                className="rounded-3xl border border-[#DADCE0] bg-white p-7 dark:border-[#3C4043] dark:bg-[#202124]"
+              >
+                <div className={`mb-5 grid h-12 w-12 place-items-center rounded-2xl ${a.tint}`}>
+                  <a.icon size={24} aria-hidden />
+                </div>
+                <h3 className="text-lg font-semibold">{a.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">{a.desc}</p>
+              </div>
+            ))}
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="rounded-2xl border border-[#22396F]/40 bg-white/60 p-6 dark:bg-[#010736]/60">
-              <div className="mb-3 text-3xl">🤖</div>
-              <h3 className="mb-2 text-base font-extrabold text-[#010736] dark:text-[#FCF1D0]">Model ML</h3>
-              <p className="text-justify text-xs leading-relaxed text-[#0D1C42] dark:text-[#BFDDF0]">
-                Menggunakan regresi logistik terregularisasi yang dilatih dari 5 tahun data
-                historis banjir DKI. Dua varian model: <em>full</em> (dengan TMA) dan
-                <em>rainfall_only</em> (tanpa TMA). Mode <em>auto</em> memilih model terbaik
-                berdasarkan ketersediaan data.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[#22396F]/40 bg-white/60 p-6 dark:bg-[#010736]/60">
-              <div className="mb-3 text-3xl">🛡️</div>
-              <h3 className="mb-2 text-base font-extrabold text-[#010736] dark:text-[#FCF1D0]">Agen AI Berguardrail</h3>
-              <p className="text-justify text-xs leading-relaxed text-[#0D1C42] dark:text-[#BFDDF0]">
-                LLM Qwen (self-hosted via Ollama) hanya menulis teks naratif—tidak pernah
-                menghitung angka. Semua output difilter oleh pagar aturan ketat; bila
-                melanggar, sistem jatuh ke teks saran deterministik yang aman.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[#22396F]/40 bg-white/60 p-6 dark:bg-[#010736]/60">
-              <div className="mb-3 text-3xl">🗺️</div>
-              <h3 className="mb-2 text-base font-extrabold text-[#010736] dark:text-[#FCF1D0]">Dashboard Interaktif</h3>
-              <p className="text-justify text-xs leading-relaxed text-[#0D1C42] dark:text-[#BFDDF0]">
-                Peta choropleth berbasis Leaflet menampilkan warna risiko tiap kecamatan.
-                Klik kecamatan untuk melihat peluang, prakiraan hujan, tinggi muka air,
-                dan saran. Warga juga bisa melaporkan kondisi lapangan secara langsung.
-              </p>
-            </div>
-          </div>
-
-          {/* tech stack */}
-          <div className="mt-8 rounded-2xl border border-[#22396F]/40 bg-white/60 p-6 dark:bg-[#010736]/60">
-            <h3 className="mb-4 text-sm font-extrabold text-[#010736] dark:text-[#FCF1D0]">Stack Teknologi</h3>
+          <div className="mt-8 rounded-3xl border border-[#DADCE0] bg-white p-7 dark:border-[#3C4043] dark:bg-[#202124]">
+            <h3 className="mb-4 text-sm font-semibold">Stack teknologi</h3>
             <div className="flex flex-wrap gap-2">
-              {[
-                'Next.js 15', 'TypeScript', 'Tailwind CSS', 'FastAPI', 'Python',
-                'Scikit-learn', 'Qwen (Ollama)', 'Leaflet', 'Pandas', 'NumPy',
-              ].map(t => (
+              {STACK.map(t => (
                 <span
                   key={t}
-                  className="rounded-full border border-[#22396F]/40 bg-[#BFDDF0]/40 px-3 py-1 text-xs font-semibold text-[#010736] dark:bg-[#22396F]/30 dark:text-[#FCF1D0]"
+                  className="rounded-full bg-[#E8F0FE] px-4 py-1.5 text-xs font-semibold text-[#1A73E8] dark:bg-[#1A73E8]/20 dark:text-[#8AB4F8]"
                 >
                   {t}
                 </span>
@@ -511,45 +556,41 @@ export const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════
-          FINAL CTA BAND
-      ══════════════════════════════════════════ */}
-      <section className="bg-[#010736] px-4 py-16 text-center">
+      {/* ══════════════ FINAL CTA ══════════════ */}
+      <section className="bg-white px-5 py-24 text-center sm:px-8 md:py-32 dark:bg-[#202124]">
         <Image
           src="/pawang-logo.png"
           alt="Pawang AI"
-          width={64}
-          height={64}
-          className="mx-auto mb-4 rounded-full"
+          width={80}
+          height={80}
+          className="mx-auto mb-6 rounded-full"
         />
-        <h2 className="mb-3 text-3xl font-extrabold text-white sm:text-4xl">
-          Siap Pantau Risiko Banjir Jakarta?
+        <p className="text-2xl text-[#5F6368] sm:text-4xl dark:text-[#9AA0A6]">Siap pantau</p>
+        <h2 className="text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl">
+          risiko banjir Jakarta?
         </h2>
-        <p className="mx-auto mb-8 max-w-md text-sm leading-relaxed text-[#BFDDF0]">
+        <p className="mx-auto mt-6 max-w-md text-base leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
           Buka dashboard peta sekarang dan lihat peluang banjir di kecamatan Anda hari ini.
         </p>
-        <Link
-          href="/map"
-          className="inline-flex items-center gap-2 rounded-full bg-[#8CC0EB] px-10 py-4 text-base font-extrabold text-[#010736] shadow-lg transition hover:brightness-110"
-        >
-          <MapPinned size={18} /> Buka Dashboard Peta
-        </Link>
+        <div className="mt-10 flex justify-center">
+          <PillLink href="/map">
+            <MapPinned size={20} aria-hidden /> Buka Dashboard Peta
+          </PillLink>
+        </div>
       </section>
 
-      {/* ══════════════════════════════════════════
-          FOOTER
-      ══════════════════════════════════════════ */}
-      <footer className="border-t border-[#22396F]/30 bg-[#010736] px-4 py-8">
-        <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
+      {/* ══════════════ FOOTER ══════════════ */}
+      <footer className="border-t border-[#DADCE0] bg-[#F8F9FA] px-5 py-10 sm:px-8 dark:border-[#3C4043] dark:bg-[#292A2D]">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
           <div className="flex items-center gap-3">
             <Image src="/pawang-logo.png" alt="Logo" width={28} height={28} className="rounded-full" />
-            <span className="text-sm font-bold text-[#FCF1D0]">Pawang AI</span>
+            <span className="text-sm font-semibold">Pawang AI</span>
           </div>
-          <p className="text-xs text-[#BFDDF0]">
+          <p className="max-w-md text-xs leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
             Proyek prediksi banjir Jakarta — Kelompok 1, Teknik Sistem Komputer &amp; Informasi,
             Fakultas Teknik Universitas Indonesia
           </p>
-          <p className="text-xs text-[#22396F]">
+          <p className="text-xs text-[#5F6368] dark:text-[#9AA0A6]">
             Data prediksi bukan pengganti informasi resmi BPBD.
           </p>
         </div>
