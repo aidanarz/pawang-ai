@@ -65,6 +65,14 @@ def test_unknown_grid_id_404(replay_settings):
                                        params={"grid_id": "atlantis", "date": "2020-02-25"}).status_code == 404
 
 
+def test_impossible_date_is_422_not_500(replay_settings):
+    """Incident I-4: 2020-02-31 passes the YYYY-MM-DD pattern but is not a real day."""
+    c = client(replay_settings)
+    for path, extra in (("/api/v1/heatmap", {}), ("/api/v1/analysis", {"grid_id": "menteng"})):
+        r = c.get(path, params={"date": "2020-02-31", **extra})
+        assert r.status_code == 422, (path, r.status_code)
+
+
 def test_cache_hit_on_second_request(replay_settings):
     c = client(replay_settings)
     a = c.get("/api/v1/heatmap", params={"date": FLOOD_DAY.isoformat()}).json()["metadata"]
@@ -210,6 +218,19 @@ def test_advice_accepts_grounded_text():
             "commuter_advisory": "Risiko tinggi: hindari genangan dan jalan rendah."}
     d = AdviceWriter(FakeLLM({"advice_writer": good})).write(FACTS)
     assert d.decided_by == "qwen", d.llm.guardrail_errors
+
+
+def test_advice_medium_high_needs_cukup_tinggi():
+    """medium_high (added 2026-11-17) must be written as "cukup tinggi"; plain "tinggi" or "sedang" is a wrong level."""
+    f = AdviceFacts("Makasar", dt.date(2020, 2, 25), "medium_high", "HIGH", 9.8, None, today=dt.date(2020, 2, 25))
+    good = {"recommendation": "Risiko banjir cukup tinggi di Makasar untuk hari ini. Waspada dan hindari jalan rendah.",
+            "commuter_advisory": "Diperkirakan hujan ringan sekitar 9.8 mm hari ini. Siapkan rute alternatif."}
+    d = AdviceWriter(FakeLLM({"advice_writer": good})).write(f)
+    assert d.decided_by == "qwen", d.llm.guardrail_errors
+    for wrong in ("Risiko banjir tinggi di Makasar untuk hari ini. Hindari jalan rendah.",
+                  "Risiko banjir sedang di Makasar untuk hari ini. Tetap waspada."):
+        bad = {**good, "recommendation": wrong}
+        assert AdviceWriter(FakeLLM({"advice_writer": bad})).write(f).decided_by == "policy", wrong
 
 
 # ---- small pieces -----------------------------------------------------------------------------

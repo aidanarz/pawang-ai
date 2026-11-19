@@ -38,6 +38,8 @@ interface RightSidebarProps {
   /** Areas currently on the map (the search box looks through these). */
   features: GeoJSONGridFeature[];
   isLoading: boolean;
+  /** Name of the area just clicked, known from the heatmap before the analysis arrives. */
+  selectedAreaName?: string | null;
   timeHorizon: TimeHorizon;
   onChangeTimeHorizon: (horizon: TimeHorizon) => void;
   isSimulating: boolean;
@@ -52,6 +54,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   analysis,
   features,
   isLoading,
+  selectedAreaName = null,
   timeHorizon,
   onChangeTimeHorizon,
   isSimulating,
@@ -270,11 +273,19 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
         {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-16 space-y-3">
-              <div className="w-8 h-8 rounded-full border-2 border-[#22396F] dark:border-[#FCF1D0] border-t-transparent animate-spin" />
-              <p className="text-xs text-[#22396F] dark:text-[#BFDDF0] font-medium text-justify">
-                Mengambil data hidrologi satelit & sensor...
-              </p>
+            <div className="space-y-3">
+              {/* The name is shown at once from the map data; only the analysis and advice are still loading. */}
+              {selectedAreaName && (
+                <h2 className="text-base font-extrabold text-[#010736] dark:text-[#FCF1D0] leading-tight">
+                  {selectedAreaName}
+                </h2>
+              )}
+              <div className="flex flex-col items-center justify-center py-16 space-y-3">
+                <div className="w-8 h-8 rounded-full border-2 border-[#22396F] dark:border-[#FCF1D0] border-t-transparent animate-spin" />
+                <p className="text-xs text-[#22396F] dark:text-[#BFDDF0] font-medium text-center">
+                  Menganalisis risiko dan menyiapkan saran...
+                </p>
+              </div>
             </div>
           ) : analysis ? (
             <>

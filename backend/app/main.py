@@ -86,7 +86,10 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
         if date:
             if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
                 raise HTTPException(422, "date must be YYYY-MM-DD")
-            return dt.date.fromisoformat(date)
+            try:
+                return dt.date.fromisoformat(date)
+            except ValueError:  # passes the pattern but is not a real day, e.g. 2020-02-31 (incident I-4)
+                raise HTTPException(422, f"'{date}' is not a valid calendar date") from None
         if s.data_mode == "replay":
             raise HTTPException(422, "replay mode needs ?date=YYYY-MM-DD (archive data, e.g. 2020-02-25)")
         return target_date_for(time)

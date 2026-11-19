@@ -45,6 +45,8 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
   const [timeHorizon, setTimeHorizon] = useState<TimeHorizon>('5h');
   const [features, setFeatures] = useState<GeoJSONGridFeature[]>([]);
   const [analysis, setAnalysis] = useState<AreaAnalysisResponse | null>(null);
+  // True while /api/v1/analysis is in flight. The advice is written by Qwen, which can take seconds.
+  const [analysisLoading, setAnalysisLoading] = useState(false);
   const [basemap, setBasemap] = useState<BasemapType>(() => {
     if (typeof window === 'undefined') return 'dark';
     try {
@@ -206,6 +208,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
     if (!selectedGridId) return;
     let isMounted = true;
     const loadAnalysis = async () => {
+      setAnalysisLoading(true);
       try {
         const params = new URLSearchParams({ grid_id: selectedGridId, time: timeHorizon });
         if (archiveDate) params.set('date', archiveDate);
@@ -215,6 +218,8 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
         setAnalysis(res.ok ? ((await res.json()) as AreaAnalysisResponse) : null);
       } catch (err) {
         console.error('Error fetching analysis:', err);
+      } finally {
+        if (isMounted) setAnalysisLoading(false);
       }
     };
     loadAnalysis();
@@ -376,7 +381,12 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
         onToggleTheme={handleToggleTheme}
         analysis={analysis}
         features={features}
-        isLoading={false}
+        // Loading view only when a NEW area is picked: a horizon change keeps the current panel until the
+        // answer arrives, so the timeline simulation does not flash a spinner every step.
+        isLoading={analysisLoading && analysis?.grid_id !== selectedGridId}
+        selectedAreaName={
+          features.find((f) => f.properties.grid_id === selectedGridId)?.properties.area_name ?? null
+        }
         timeHorizon={timeHorizon}
         onChangeTimeHorizon={(h) => setTimeHorizon(h)}
         isSimulating={isSimulating}

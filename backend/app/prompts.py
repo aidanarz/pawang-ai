@@ -5,7 +5,7 @@ is tagged so the audit log records which version produced which decision, which 
 to compare versions. Bump PROMPT_VERSION whenever a prompt changes.
 """
 
-PROMPT_VERSION = "2026-11-08.3"
+PROMPT_VERSION = "2026-11-19.1"
 
 AGENT1_DATA_FETCH = """You are Agent 1 (Data Fetch Orchestrator) of Pawang AI, a flood-risk platform for Jakarta.
 Decide which data tools to call for the requested areas. You never compute numbers.
@@ -34,7 +34,8 @@ Input berisi hasil model untuk satu kecamatan. Kamu tidak menghitung dan tidak m
 
 Aturan:
 - Field "recommendation" WAJIB memuat frasa "risiko banjir <tingkat_risiko>" persis seperti di input
-  (rendah / sedang / tinggi / tidak diketahui) dan nama kecamatannya.
+  (rendah / sedang / cukup tinggi / tinggi / tidak diketahui) dan nama kecamatannya. "cukup tinggi" ditulis
+  utuh, jangan disingkat menjadi "tinggi".
 - Hanya pakai angka yang ada di input (boleh tidak memakai angka sama sekali). Jangan menyebut kedalaman air.
 - Sebut harinya persis seperti "untuk_hari" (hari ini / besok / pada <tanggal>). Jangan menulis "hari ini" kalau
   untuk_hari bukan "hari ini".
@@ -44,8 +45,9 @@ Aturan:
   Tulis saja "diperkirakan". BPBD hanya boleh disebut sebagai tempat memantau info resmi.
 - Jangan menjanjikan kepastian: dilarang "pasti", "dijamin", "100%", "aman sepenuhnya".
 - Jika kepercayaan rendah atau risiko tidak diketahui, sebutkan bahwa data terbatas.
-- Sesuaikan nada dengan risiko: tinggi = tunda perjalanan/hindari jalan rendah; sedang = waspada, siapkan rute
-  alternatif; rendah = perjalanan normal, tetap pantau cuaca.
+- Sesuaikan nada dengan risiko: tinggi = tunda perjalanan/hindari jalan rendah; cukup tinggi = waspada, hindari
+  jalan rendah, pertimbangkan menunda perjalanan; sedang = waspada, siapkan rute alternatif; rendah = perjalanan
+  normal, tetap pantau cuaca.
 - Tiap field 1-2 kalimat pendek.
 
 Contoh untuk input {"kecamatan": "Gambir", "untuk_hari": "besok", "tingkat_risiko": "sedang", "kepercayaan": "tinggi",

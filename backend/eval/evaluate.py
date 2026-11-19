@@ -168,6 +168,9 @@ ADVICE_CASES = [
     # forecast for tomorrow (the live case from 2026-11-08): must say "besok" and "hujan ringan"
     AdviceFacts("Menteng", dt.date(2026, 11, 9), "medium", "LOW", 2.5, None, today=dt.date(2026, 11, 8)),
     AdviceFacts("Cipayung", dt.date(2020, 1, 1), "high", "HIGH", 120.0, 850.0, today=dt.date(2019, 12, 31)),
+    # medium_high ("cukup tinggi", added 2026-11-17): must write "cukup tinggi", not "tinggi" or "sedang"
+    AdviceFacts("Makasar", dt.date(2020, 2, 25), "medium_high", "HIGH", 9.8, 690.0, today=dt.date(2020, 2, 25)),
+    AdviceFacts("Kramat Jati", dt.date(2026, 11, 20), "medium_high", "LOW", 14.0, None, today=dt.date(2026, 11, 19)),
 ]
 
 
