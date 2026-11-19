@@ -26,6 +26,8 @@ interface LeafletMapProps {
   evacuationCenters: EvacuationCenter[];
   onSelectGrid: (gridId: string, position?: [number, number]) => void;
   reports: LiveReport[];
+  isReportPicking: boolean;
+  onPickReportLocation: (gridId: string, position: [number, number]) => void;
 }
 
 const escapeHtml = (s: string) =>
@@ -90,10 +92,14 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   evacuationCenters,
   onSelectGrid,
   reports,
+  isReportPicking,
+  onPickReportLocation,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef(features);
   const onSelectGridRef = useRef(onSelectGrid);
+  const onPickReportLocationRef = useRef(onPickReportLocation);
+  const isReportPickingRef = useRef(isReportPicking);
   const reportsLayerRef = useRef<L.LayerGroup | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -118,20 +124,32 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     onSelectGridRef.current = onSelectGrid;
   }, [onSelectGrid]);
 
+  useEffect(() => {
+    onPickReportLocationRef.current = onPickReportLocation;
+  }, [onPickReportLocation]);
+
+  useEffect(() => {
+    isReportPickingRef.current = isReportPicking;
+  }, [isReportPicking]);
+
   // 1. Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
     // Center on Jabodetabek / Jakarta: latitude: -6.2088, longitude: 106.8456, zoom: 11
     const map = L.map(mapContainerRef.current, {
-      center: [-6.2088, 106.8456],
-      zoom: 11,
+      center: [-6.32, 106.82],
+      zoom: 10,
       zoomControl: false,
       attributionControl: false,
       minZoom: 9,
       maxZoom: 18,
       doubleClickZoom: false,
     });
+    map.setMaxBounds([
+      [-6.75, 106.38],
+      [-5.98, 107.18],
+    ]);
 
     mapInstanceRef.current = map;
 
@@ -153,7 +171,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     // Custom window events for decoupled map controls
     const handleZoomIn = () => map.zoomIn();
     const handleZoomOut = () => map.zoomOut();
-    const handleReset = () => map.flyTo([-6.2088, 106.8456], 11, { duration: 1 });
+    const handleReset = () => map.flyTo([-6.32, 106.82], 10, { duration: 1 });
 
     window.addEventListener('pawang:zoomin', handleZoomIn);
     window.addEventListener('pawang:zoomout', handleZoomOut);
@@ -197,12 +215,42 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     };
 
     const handleMapDoubleClick = (event: L.LeafletMouseEvent) => {
+      if (isReportPickingRef.current) return;
       if (event.originalEvent.button !== 0) return;
       event.originalEvent.preventDefault();
       inspectMapCoordinate(event);
     };
 
+    const handleMapClick = (event: L.LeafletMouseEvent) => {
+      if (!isReportPickingRef.current) return;
+      const { lat, lng } = event.latlng;
+      const isInsideJakarta = JAKARTA_ADMIN_BOUNDARY.features.some((feature) =>
+        isPointInBoundary(lng, lat, feature.geometry)
+      );
+      if (!isInsideJakarta) return;
+
+      const clickedFeature =
+        featuresRef.current.find((feature) =>
+          isPointInPolygon(lng, lat, feature.geometry.coordinates)
+        ) ??
+        featuresRef.current.reduce<GeoJSONGridFeature | null>(
+          (nearest, feature) => {
+            if (!nearest) return feature;
+            return getFeatureDistance(lng, lat, feature) <
+              getFeatureDistance(lng, lat, nearest)
+              ? feature
+              : nearest;
+          },
+          null
+        );
+
+      if (clickedFeature) {
+        onPickReportLocationRef.current(clickedFeature.properties.grid_id, [lat, lng]);
+      }
+    };
+
     map.on('dblclick', handleMapDoubleClick);
+    map.on('click', handleMapClick);
 
     return () => {
       window.removeEventListener('pawang:zoomin', handleZoomIn);
@@ -210,6 +258,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       window.removeEventListener('pawang:reset', handleReset);
       window.removeEventListener('pawang:flyto', handleFlyTo);
       map.off('dblclick', handleMapDoubleClick);
+      map.off('click', handleMapClick);
       areaLayerRef.current = null;
       map.remove();
       mapInstanceRef.current = null;

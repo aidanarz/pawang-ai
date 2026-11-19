@@ -5,10 +5,12 @@ import { CloudRain, ShieldCheck } from 'lucide-react';
 
 interface TopStatusPillProps {
   highRiskCount?: number;
+  backendConnected?: boolean | null;
 }
 
 export const TopStatusPill: React.FC<TopStatusPillProps> = ({
   highRiskCount = 0,
+  backendConnected = null,
 }) => {
   const [currentTime, setCurrentTime] = useState<string>('');
 
@@ -34,8 +36,22 @@ export const TopStatusPill: React.FC<TopStatusPillProps> = ({
     <div className="top-status-pill rounded-full px-4 py-2 shadow-md backdrop-blur-md text-xs flex items-center gap-2.5 border border-[#22396F] bg-[#FFEBCC]/95 text-[#010736] dark:border-[#22396F] dark:bg-[#0D1C42]/95 dark:text-[#FCF1D0] transition-all">
       {/* Live Indicator Dot */}
       <span className="relative flex h-2.5 w-2.5 shrink-0">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8CC0EB] opacity-60 dark:bg-[#FCF1D0]/40" />
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#8CC0EB] dark:bg-[#FCF1D0]" />
+        {backendConnected !== null && (
+          <span
+            className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${
+              backendConnected ? 'bg-emerald-500' : 'bg-red-500'
+            }`}
+          />
+        )}
+        <span
+          className={`relative inline-flex h-2.5 w-2.5 rounded-full ${
+            backendConnected === null
+              ? 'bg-slate-400'
+              : backendConnected
+                ? 'bg-emerald-500'
+                : 'bg-red-500'
+          }`}
+        />
       </span>
 
       <span className="text-[#BFDDF0] dark:text-[#22396F]">|</span>

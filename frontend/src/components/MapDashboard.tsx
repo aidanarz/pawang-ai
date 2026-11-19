@@ -65,6 +65,8 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [reports, setReports] = useState<LiveReport[]>([]);
   const [reportDraft, setReportDraft] = useState<ReportDraft | null>(null);
+  const [isReportPicking, setIsReportPicking] = useState(false);
+  const [reportPickingDraft, setReportPickingDraft] = useState<ReportDraft | null>(null);
 
   // Data source: 'loading' until the first heatmap answer, then 'backend' (model) or 'mock' (demo data).
   const [dataSource, setDataSource] = useState<DataSource>('loading');
@@ -317,14 +319,18 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
           evacuationCenters={hasRealData ? [] : EVACUATION_CENTERS}
           onSelectGrid={handleSelectGrid}
           reports={reports}
+          isReportPicking={isReportPicking}
+          onPickReportLocation={(gridId, position) => {
+            setIsReportPicking(false);
+            setReportPickingDraft(null);
+            setReportDraft({ gridId, position });
+            setMarkerPosition(position);
+          }}
         />
       </div>
 
-      {/* 2. Top status, centered independently from the map controls */}
-      <header className="absolute top-4 left-1/2 z-30 -translate-x-1/2">
-        <TopStatusPill highRiskCount={highRiskCount} />
-      </header>
-      <div className="absolute top-16 left-1/2 z-30 -translate-x-1/2">
+      {/* 2. Top status pills stay together: prediction/date beside live status */}
+      <header className="absolute top-4 left-1/2 z-30 flex max-w-[calc(100vw-8rem)] -translate-x-1/2 items-start justify-center gap-2">
         <DataSourceBanner
           source={dataSource}
           status={status}
@@ -333,7 +339,11 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
           message={unavailableMessage}
           onChangeArchiveDate={setArchiveDate}
         />
-      </div>
+        <TopStatusPill
+          highRiskCount={highRiskCount}
+          backendConnected={status ? status.source === 'backend' : null}
+        />
+      </header>
 
       {/* Report button: the other way in besides a double click on the map */}
       <button
@@ -348,6 +358,23 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
       >
         Lapor kondisi
       </button>
+
+      {isReportPicking && (
+        <div className="absolute left-1/2 top-20 z-30 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-[#22396F] bg-[#FFEBCC]/95 px-3 py-2 text-xs text-[#010736] shadow-lg backdrop-blur-md dark:bg-[#0D1C42]/95 dark:text-[#FCF1D0]">
+          <span>Klik titik pada peta untuk memilih lokasi laporan</span>
+          <button
+            type="button"
+            onClick={() => {
+              setIsReportPicking(false);
+              if (reportPickingDraft) setReportDraft(reportPickingDraft);
+              setReportPickingDraft(null);
+            }}
+            className="rounded-md border border-current px-2 py-1 font-bold"
+          >
+            Batal
+          </button>
+        </div>
+      )}
 
       {/* 3. Center-left map controls */}
       <div className="absolute left-4 top-1/2 z-30 -translate-y-1/2">
@@ -396,6 +423,11 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
             setMarkerPosition([report.lat, report.lon]);
             setReportDraft(null);
             loadReports();
+          }}
+          onPickOnMap={(draft) => {
+            setReportDraft(null);
+            setReportPickingDraft(draft);
+            setIsReportPicking(true);
           }}
         />
       )}

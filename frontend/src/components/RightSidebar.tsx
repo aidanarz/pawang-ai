@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import {
   Search,
   AlertTriangle,
@@ -127,6 +128,13 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
         <div className="border-b border-[#22396F] bg-[#FFEBCC] p-3.5 pb-2.5 dark:border-[#22396F] dark:bg-[#0D1C42]">
           <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center">
+              <Image
+                src="/icon.svg"
+                alt="Logo Pawang AI"
+                width={28}
+                height={28}
+                className="mr-2 h-7 w-7 rounded-full border border-[#22396F] bg-[#064789] object-cover"
+              />
               <span className="text-sm font-bold leading-relaxed text-[#010736] dark:text-[#FCF1D0]">
                 Periksa Daerah
               </span>

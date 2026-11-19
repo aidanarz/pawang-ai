@@ -22,13 +22,14 @@ interface ReportModalProps {
   features: GeoJSONGridFeature[];
   onClose: () => void;
   onSent: (report: LiveReport) => void;
+  onPickOnMap: (draft: ReportDraft) => void;
 }
 
 const field =
   'w-full rounded-lg border border-[#22396F] bg-[#FFF9D2] px-2 py-1.5 text-xs text-[#010736] dark:bg-[#010736] dark:text-[#FCF1D0]';
 
 /** Mounted fresh for every report (the parent gives it a new draft), so the form always starts from the draft. */
-export const ReportModal: React.FC<ReportModalProps> = ({ draft, features, onClose, onSent }) => {
+export const ReportModal: React.FC<ReportModalProps> = ({ draft, features, onClose, onSent, onPickOnMap }) => {
   const [gridId, setGridId] = useState(draft.gridId);
   const [position, setPosition] = useState<[number, number] | undefined>(draft.position);
   const [condition, setCondition] = useState<ReportCondition | ''>('');
@@ -103,6 +104,13 @@ export const ReportModal: React.FC<ReportModalProps> = ({ draft, features, onClo
             Titik di peta: {position[0].toFixed(4)}, {position[1].toFixed(4)}
           </div>
         )}
+        <button
+          type="button"
+          onClick={() => onPickOnMap({ gridId, position })}
+          className="w-full rounded-lg border border-dashed border-[#22396F] px-3 py-2 text-[11px] font-bold hover:bg-black/5 dark:hover:bg-white/5"
+        >
+          Pilih lewat peta
+        </button>
 
         <label className="block space-y-1 text-[11px] font-semibold">
           Kondisi saat ini
