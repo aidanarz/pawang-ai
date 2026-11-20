@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
   MapPinned,
   ExternalLink,
-  ArrowUpRight,
   Cpu,
   ShieldCheck,
   Map as MapIcon,
@@ -128,54 +127,40 @@ const NAV_LINKS = [
   { href: '#tentang', label: 'Tentang' },
 ];
 
-/* ─────────────────────── shared bits ─────────────────────────── */
-
-/** Tombol pill besar ala halaman Shinkansen: label + ikon tautan di kanan */
-const PillLink: React.FC<{
-  href: string;
-  children: React.ReactNode;
-  variant?: 'primary' | 'ghost';
-  onClick?: () => void;
-}> = ({ href, children, variant = 'primary', onClick }) => (
-  <Link
-    href={href}
-    onClick={onClick}
-    className={
-      variant === 'primary'
-        ? 'relative inline-flex h-14 items-center justify-center gap-3 rounded-full bg-[#1A73E8] pl-8 pr-14 text-base font-semibold text-white shadow-[0_12px_32px_rgba(26,115,232,0.35)] transition hover:bg-[#1765CC] sm:h-16 sm:text-lg dark:bg-[#8AB4F8] dark:text-[#202124] dark:shadow-[0_12px_32px_rgba(138,180,248,0.25)] dark:hover:bg-[#AECBFA]'
-        : 'relative inline-flex h-14 items-center justify-center gap-3 rounded-full border border-[#DADCE0] bg-white pl-8 pr-14 text-base font-semibold text-[#202124] shadow-sm transition hover:bg-[#F8F9FA] sm:h-16 sm:text-lg dark:border-[#5F6368] dark:bg-[#292A2D] dark:text-[#E8EAED] dark:hover:bg-[#35363A]'
-    }
-  >
-    {children}
-    <ArrowUpRight size={22} className="absolute right-5" aria-hidden />
-  </Link>
-);
-
 /* ─────────────────────── component ─────────────────────────── */
 
+const subscribeTheme = (onChange: () => void) => {
+  window.addEventListener('storage', onChange);
+  window.addEventListener('pawang-theme-change', onChange);
+  return () => {
+    window.removeEventListener('storage', onChange);
+    window.removeEventListener('pawang-theme-change', onChange);
+  };
+};
+const getThemeSnapshot = () => {
+  try {
+    return localStorage.getItem('pawang-theme') !== 'light';
+  } catch {
+    return true;
+  }
+};
+const getThemeServerSnapshot = () => true;
+
 export const Landing: React.FC = () => {
-  const [isDark, setIsDark] = useState(true);
+  const isDark = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getThemeServerSnapshot);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showToast, setShowToast] = useState(true);
 
   /* sync dengan tema yang sudah disimpan di map */
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('pawang-theme');
-      const dark = saved !== 'light';
-      setIsDark(dark);
-      document.documentElement.classList.toggle('dark', dark);
-    } catch {
-      /* keep default dark */
-    }
-  }, []);
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
 
   const toggleTheme = () => {
     const next = !isDark;
-    setIsDark(next);
     document.documentElement.classList.toggle('dark', next);
     try {
       localStorage.setItem('pawang-theme', next ? 'dark' : 'light');
+      window.dispatchEvent(new Event('pawang-theme-change'));
     } catch { /* ignore */ }
   };
 
@@ -268,93 +253,23 @@ export const Landing: React.FC = () => {
         )}
       </header>
 
-      {/* ══════════════ FLOATING CTA (ala "Book now") ══════════════ */}
-      {showToast && (
-        <div className="fixed bottom-5 right-4 z-40 sm:bottom-8 sm:right-8">
-          <button
-            type="button"
-            onClick={() => setShowToast(false)}
-            aria-label="Tutup"
-            className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-[#202124] text-white shadow dark:bg-[#E8EAED] dark:text-[#202124]"
-          >
-            <X size={14} />
-          </button>
-          <Link
-            href="/map"
-            className="flex items-center gap-3 rounded-full border border-[#DADCE0] bg-white py-3 pl-4 pr-5 shadow-[0_16px_48px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 dark:border-[#3C4043] dark:bg-[#292A2D]"
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-[#1A73E8] text-white dark:bg-[#8AB4F8] dark:text-[#202124]">
-              <MapPinned size={20} aria-hidden />
-            </span>
-            <span className="leading-tight">
-              <span className="block text-base font-semibold sm:text-lg">Cek peta sekarang</span>
-              <span className="block text-xs text-[#5F6368] dark:text-[#9AA0A6]">
-                Gratis, tanpa daftar
-              </span>
-            </span>
-            <ArrowUpRight size={20} className="text-[#5F6368] dark:text-[#9AA0A6]" aria-hidden />
-          </Link>
-        </div>
-      )}
-
       {/* ══════════════ HERO ══════════════ */}
       <section className="bg-white dark:bg-[#202124]">
-        <div className="mx-auto max-w-6xl px-5 pb-16 pt-14 sm:px-8 sm:pt-20 md:pb-24">
-          {/* judul */}
-          <div className="max-w-4xl">
-            <span className={eyebrow}>Prediksi Banjir Jakarta</span>
-            <p className="text-2xl font-normal tracking-tight text-[#5F6368] sm:text-4xl dark:text-[#9AA0A6]">
-              Pantau risiko banjir
-            </p>
-            <h1 className="mt-1 text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl lg:text-[88px]">
-              44 kecamatan<br />
-              <span className="text-[#1A73E8] dark:text-[#8AB4F8]">hari ini.</span>
-            </h1>
-            <p className="mt-8 max-w-xl text-base leading-relaxed text-[#5F6368] sm:text-lg dark:text-[#9AA0A6]">
-              Pawang AI menggabungkan prakiraan hujan, tinggi muka air sungai, dan elevasi
-              wilayah untuk menghitung peluang banjir setiap hari—disajikan lewat peta
-              interaktif yang bisa dicek siapa saja, kapan saja.
-            </p>
-          </div>
-
-          {/* kartu pencarian */}
-          <div className="mt-10 max-w-2xl rounded-3xl border border-[#DADCE0] bg-white p-5 shadow-[0_8px_40px_rgba(60,64,67,0.15)] sm:p-6 dark:border-[#3C4043] dark:bg-[#292A2D] dark:shadow-none">
-            <p className="mb-3 text-sm font-semibold">Cari kecamatan Anda</p>
-            <AreaSearch />
-            <div className="my-4 flex items-center gap-3 text-xs text-[#5F6368] dark:text-[#9AA0A6]">
-              <span className="h-px flex-1 bg-[#DADCE0] dark:bg-[#3C4043]" />
-              atau
-              <span className="h-px flex-1 bg-[#DADCE0] dark:bg-[#3C4043]" />
-            </div>
-            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <Link
-                href="/map"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-[#1A73E8] hover:underline dark:text-[#8AB4F8]"
-              >
-                <MapPinned size={16} aria-hidden /> Pilih langsung di peta
-              </Link>
-              <ul className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Legenda risiko">
-                {TIERS.map(t => (
-                  <li key={t.name} className="flex items-center gap-1.5 text-xs text-[#5F6368] dark:text-[#9AA0A6]">
-                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: t.color }} />
-                    {t.name}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* foto + logo besar di kanan foto (tanpa gradient) */}
-          <div className="mt-14 flex flex-col items-stretch gap-6 md:mt-20 md:flex-row md:gap-10">
-            <div className="relative h-64 w-full overflow-hidden rounded-[28px] shadow-xl sm:h-80 md:h-[460px] md:flex-1">
-              <Image
-                src="/jakarta-flood.jpg"
-                alt="Banjir Jakarta"
-                fill
-                priority
-                sizes="(min-width: 768px) 60vw, 100vw"
-                className="object-cover object-center"
-              />
+        <div className="w-full pt-14 sm:pt-20">
+          {/* judul + logo */}
+          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-10 px-5 sm:px-8 md:flex-row md:items-center">
+            <div className="max-w-4xl md:flex-1">
+              <span className={eyebrow}>Pawang AI</span>
+              <p className="text-2xl font-normal tracking-tight text-[#5F6368] sm:text-4xl dark:text-[#9AA0A6]">
+                software untuk
+              </p>
+              <h1 className="mt-1 text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl lg:text-[88px]">
+                prediksi banjir<br />
+                <span className="text-[#1A73E8] dark:text-[#8AB4F8]">hari ini.</span>
+              </h1>
+              <p className="mt-8 max-w-xl text-base leading-relaxed text-[#5F6368] sm:text-lg dark:text-[#9AA0A6]">
+                Cek peluang banjir per kecamatan di Jakarta lewat peta interaktif berbasis data curah hujan, tinggi muka air sungai, dan elevasi wilayah.
+              </p>
             </div>
             <div className="flex items-center justify-center md:w-[34%] md:shrink-0">
               <Image
@@ -364,6 +279,41 @@ export const Landing: React.FC = () => {
                 height={420}
                 priority
                 className="h-auto w-48 rounded-full sm:w-64 md:w-full md:max-w-[380px]"
+              />
+            </div>
+          </div>
+
+          {/* kartu pencarian */}
+          <div className="mt-10 w-full border-t border-[#DADCE0] bg-white py-5 sm:py-6 dark:border-[#3C4043] dark:bg-[#292A2D]">
+            <div className="mx-auto max-w-6xl px-5 sm:px-8">
+              <p className="mb-3 text-sm font-semibold">Cari kecamatan Anda</p>
+              <AreaSearch />
+              <div className="my-4 flex items-center gap-3 text-xs text-[#5F6368] dark:text-[#9AA0A6]">
+                <span className="h-px flex-1 bg-[#DADCE0] dark:bg-[#3C4043]" />
+                atau
+                <span className="h-px flex-1 bg-[#DADCE0] dark:bg-[#3C4043]" />
+              </div>
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <Link
+                  href="/map"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#1A73E8] hover:underline dark:text-[#8AB4F8]"
+                >
+                  <MapPinned size={16} aria-hidden /> Pilih langsung di peta
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* foto (tanpa gradient) */}
+          <div className="w-full">
+            <div className="relative h-64 w-full overflow-hidden sm:h-80 md:h-[460px]">
+              <Image
+                src="/jakarta-flood.jpg"
+                alt="Banjir Jakarta"
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover object-center"
               />
             </div>
           </div>
@@ -470,11 +420,6 @@ export const Landing: React.FC = () => {
               bisa diakses publik—gratis, transparan, dan terbuka.
             </p>
           </div>
-          <div className="mt-12">
-            <PillLink href="/map">
-              <MapPinned size={20} aria-hidden /> Buka Dashboard Peta
-            </PillLink>
-          </div>
         </div>
       </section>
 
@@ -553,29 +498,6 @@ export const Landing: React.FC = () => {
               ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* ══════════════ FINAL CTA ══════════════ */}
-      <section className="bg-white px-5 py-24 text-center sm:px-8 md:py-32 dark:bg-[#202124]">
-        <Image
-          src="/pawang-logo.png"
-          alt="Pawang AI"
-          width={80}
-          height={80}
-          className="mx-auto mb-6 rounded-full"
-        />
-        <p className="text-2xl text-[#5F6368] sm:text-4xl dark:text-[#9AA0A6]">Siap pantau</p>
-        <h2 className="text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl">
-          risiko banjir Jakarta?
-        </h2>
-        <p className="mx-auto mt-6 max-w-md text-base leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
-          Buka dashboard peta sekarang dan lihat peluang banjir di kecamatan Anda hari ini.
-        </p>
-        <div className="mt-10 flex justify-center">
-          <PillLink href="/map">
-            <MapPinned size={20} aria-hidden /> Buka Dashboard Peta
-          </PillLink>
         </div>
       </section>
 
