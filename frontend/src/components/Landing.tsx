@@ -13,10 +13,9 @@ import {
   X,
   Sun,
   Moon,
-  AlertTriangle,
+  Clock,
 } from 'lucide-react';
 import { AreaSearch } from './AreaSearch';
-import { RISK_COLORS } from '@/utils/areaColors';
 
 /* ─────────────────────────── data ─────────────────────────── */
 
@@ -54,10 +53,10 @@ const SOURCES = [
 ] as const;
 
 const TIERS = [
-  { name: 'Low', range: '< 0,8%', color: RISK_COLORS.Low },
-  { name: 'Medium', range: '0,8 – 2,15%', color: RISK_COLORS.Medium },
-  { name: 'Medium-High', range: '2,15 – 3,3%', color: RISK_COLORS['Medium-High'] },
-  { name: 'High', range: '≥ 3,3%', color: RISK_COLORS.High },
+  { name: 'Low', range: '< 0,8%', color: '#71A868' },
+  { name: 'Medium', range: '0,8 – 2,15%', color: '#CE9F45' },
+  { name: 'Medium-High', range: '2,15 – 3,3%', color: '#C9733F' },
+  { name: 'High', range: '≥ 3,3%', color: '#B8514A' },
 ] as const;
 
 const STEPS = [
@@ -88,10 +87,10 @@ const STEPS = [
 ] as const;
 
 const STATS = [
-  { value: '44', label: 'Kecamatan dipantau' },
-  { value: '0,884', label: 'ROC-AUC model penuh' },
-  { value: '5', label: 'Tahun data latih (2016–2020)' },
-  { value: '62+', label: 'Automated tests' },
+  { value: '44 kecamatan', label: 'Dipantau di DKI Jakarta' },
+  { value: '24 jam', label: 'Cakupan waktu prediksi' },
+  { value: '5 tahun', label: 'Data latih (2016–2020)' },
+  { value: '2 mode', label: 'Prediksi live & log histori' },
 ] as const;
 
 const ABOUT = [
@@ -322,13 +321,13 @@ export const Landing: React.FC = () => {
 
       {/* ══════════════ STATS ══════════════ */}
       <section className="border-y border-[#DADCE0] bg-[#F8F9FA] py-14 dark:border-[#3C4043] dark:bg-[#292A2D]">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-6 sm:px-8 md:grid-cols-4">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-6 sm:px-8 md:flex md:items-start md:justify-between md:gap-x-8">
           {STATS.map(s => (
-            <div key={s.label}>
-              <p className="text-5xl font-semibold tracking-tight text-[#1A73E8] sm:text-6xl dark:text-[#8AB4F8]">
+            <div key={s.label} className="text-center">
+              <p className="whitespace-nowrap text-xl font-semibold tracking-tight text-[#1A73E8] sm:text-3xl md:text-2xl lg:text-3xl xl:text-4xl dark:text-[#8AB4F8]">
                 {s.value}
               </p>
-              <p className="mt-2 max-w-[14rem] text-sm leading-snug text-[#5F6368] dark:text-[#9AA0A6]">
+              <p className="mx-auto mt-2 text-sm leading-snug text-[#5F6368] dark:text-[#9AA0A6]">
                 {s.label}
               </p>
             </div>
@@ -372,27 +371,30 @@ export const Landing: React.FC = () => {
 
           {/* kategori */}
           <div className="mt-16 rounded-3xl bg-[#F8F9FA] p-6 sm:p-10 dark:bg-[#292A2D]">
-            <h3 className="text-xl font-semibold sm:text-2xl">Kategori risiko &amp; ambang batas peluang</h3>
-            <ul className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <h3 className="text-center text-xl font-semibold sm:text-2xl">Kategori risiko &amp; ambang batas peluang</h3>
+            <ul className="mt-6 grid grid-cols-2 overflow-hidden rounded-2xl md:grid-cols-4">
               {TIERS.map(t => (
                 <li
                   key={t.name}
-                  className="flex items-center gap-3 rounded-full border border-[#DADCE0] bg-white px-4 py-3 dark:border-[#3C4043] dark:bg-[#202124]"
+                  className="flex min-h-[120px] flex-col justify-between p-5 text-white sm:min-h-[136px] sm:p-6"
+                  style={{ backgroundColor: t.color }}
                 >
-                  <span className="h-4 w-4 shrink-0 rounded-full" style={{ backgroundColor: t.color }} />
-                  <span className="text-sm leading-tight">
-                    <b className="block font-semibold">{t.name}</b>
-                    <span className="text-[#5F6368] dark:text-[#9AA0A6]">{t.range}</span>
+                  <span className="text-lg font-semibold leading-tight tracking-tight sm:text-xl">
+                    {t.name}
+                  </span>
+                  <span className="text-lg font-semibold tracking-tight sm:text-xl">
+                    {t.range}
                   </span>
                 </li>
               ))}
             </ul>
-            <div className="mt-6 flex gap-3 rounded-2xl bg-[#FEF7E0] p-4 text-sm leading-relaxed text-[#7A4F01] dark:bg-[#F9AB00]/10 dark:text-[#FDD663]">
-              <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden />
-              <p className="max-w-prose">
-                <b>Catatan penting:</b> Ini adalah perkiraan, bukan kepastian. Pada evaluasi data
-                2020, model menangkap sekitar separuh kejadian banjir berkategori High, dan hanya
-                ≈1 dari 6 peringatan High yang benar-benar banjir. Selalu cek info resmi BPBD DKI.
+            <div className="mt-6 rounded-2xl bg-[#FEF7E0] p-4 text-sm leading-relaxed text-[#7A4F01] dark:bg-[#F9AB00]/10 dark:text-[#FDD663]">
+              <p className="text-justify">
+                Angka persentase tersebut tergolong kecil karena kejadian banjir harian di tingkat
+                kecamatan terbilang jarang terjadi dalam rekam jejak data historis 2016–2020 (hanya
+                sekitar 2–3% dari total hari). Ambang batas kategori ini kemudian dikalibrasi
+                secara statistik dari hasil evaluasi tahunan agar sistem tetap peka mendeteksi
+                potensi banjir tanpa memicu terlalu banyak peringatan palsu.
               </p>
             </div>
           </div>
@@ -402,22 +404,27 @@ export const Landing: React.FC = () => {
       {/* ══════════════ MENGAPA PENTING ══════════════ */}
       <section id="mengapa" className="bg-[#F8F9FA] px-5 py-24 sm:px-8 md:py-32 dark:bg-[#292A2D]">
         <div className="mx-auto max-w-6xl">
-          <span className={eyebrow}>Mengapa penting?</span>
-          <p className="text-2xl text-[#5F6368] sm:text-5xl dark:text-[#9AA0A6]">Jakarta banjir</p>
-          <h2 className="text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl lg:text-[104px]">
-            setiap tahun.
-          </h2>
-          <div className="mt-12 grid gap-8 md:grid-cols-2 md:gap-16">
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <span className={eyebrow}>Mengapa penting?</span>
+              <p className="text-2xl text-[#5F6368] sm:text-5xl dark:text-[#9AA0A6]">Jakarta banjir</p>
+              <h2 className="text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl lg:text-[104px]">
+                setiap tahun.
+              </h2>
+            </div>
+            <Clock
+              aria-hidden
+              className="-mt-1 h-[96px] w-[96px] shrink-0 text-[#1A73E8] opacity-50 sm:-mt-3 sm:h-[150px] sm:w-[150px] md:h-[185px] md:w-[185px] dark:text-[#8AB4F8]"
+            />
+          </div>
+          <div className="mt-12 grid gap-6 md:mt-14 md:grid-cols-2 md:gap-12">
             <p className="max-w-lg text-base leading-relaxed text-[#5F6368] sm:text-lg dark:text-[#9AA0A6]">
-              Banjir bukan sekadar genangan—ia menghentikan mobilitas, merusak harta benda, dan
-              membahayakan nyawa. Namun informasi risiko per wilayah sering kali terlambat
-              sampai ke warga. Pawang AI hadir sebagai jembatan antara data teknis cuaca dan
-              kebutuhan warga akan informasi yang mudah dipahami, satu hari lebih awal.
+              Risiko banjir per wilayah sering terlambat diketahui warga. Pawang AI menerjemahkan
+              prakiraan hujan dan tinggi muka air menjadi peta risiko harian yang mudah dibaca.
             </p>
             <p className="max-w-lg text-base leading-relaxed text-[#5F6368] sm:text-lg dark:text-[#9AA0A6]">
-              Dengan menggabungkan prakiraan cuaca, sensor tinggi muka air, dan model statistik
-              berbasis 5 tahun data historis, sistem ini menyediakan peta risiko harian yang
-              bisa diakses publik—gratis, transparan, dan terbuka.
+              Berbasis 5 tahun data historis DKI Jakarta, siapa pun bisa mengecek potensi banjir
+              lebih awal sebelum beraktivitas—gratis, cepat, dan transparan.
             </p>
           </div>
         </div>
