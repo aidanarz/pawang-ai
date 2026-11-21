@@ -13,25 +13,23 @@ const TIERS = [
 ] as const;
 
 export const HeatmapLegend: React.FC<{ dominant?: RiskLevel | null }> = ({ dominant = null }) => (
-
   <div className="w-64">
-    <div className="space-y-1.5 rounded-xl border border-[#22396F] bg-[#FFEBCC]/95 px-2.5 py-2 backdrop-blur-md shadow-md dark:border-[#22396F] dark:bg-[#0D1C42]/95 transition-colors">
-      <ul className="space-y-1 text-[10.5px] font-semibold text-[#010736] dark:text-[#FCF1D0]">
+    <div className="space-y-2 rounded-2xl border border-[#DADCE0] bg-white/95 p-3 text-[#202124] shadow-md backdrop-blur-md transition-colors dark:border-[#3C4043] dark:bg-[#202124]/95 dark:text-[#E8EAED]">
+      <ul className="space-y-1.5 text-[11px] font-medium">
         {TIERS.map((t) => (
           <li key={t.risk} className="flex items-center gap-2">
-            <span className="h-3 w-5 shrink-0 rounded-sm" style={{ backgroundColor: RISK_COLORS[t.risk] }} />
-            <span className="flex-1">{t.label}</span>
-            <span className="font-mono">{t.range}</span>
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: RISK_COLORS[t.risk] }} />
+            <span className="flex-1 font-semibold">{t.label}</span>
+            <span className="font-mono text-[10px] tabular-nums text-[#5F6368] dark:text-[#9AA0A6]">{t.range}</span>
           </li>
         ))}
       </ul>
-      <div className="px-0.5 text-[9.5px] leading-tight text-[#22396F] dark:text-[#BFDDF0] text-justify">
-        Warna = kategori peluang banjir (model) untuk hari prakiraan, bukan luas genangan.
+      <div className="border-t border-[#DADCE0] pt-2 text-[10px] leading-relaxed text-[#5F6368] dark:border-[#3C4043] dark:text-[#9AA0A6]">
+        Warna menunjukkan peluang banjir (model), bukan luas genangan.
       </div>
       {dominant && (
-        <div className="px-0.5 text-[9.5px] leading-tight text-[#22396F] dark:text-[#BFDDF0] text-justify">
-          Hampir semua area berkategori {dominant}. Warna tetap {dominant}; gelap = peluang relatif lebih tinggi
-          di antara area tersebut, terang = relatif lebih rendah. Bukan kategori yang lebih rendah.
+        <div className="text-[10px] leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
+          Mayoritas {dominant}: makin gelap berarti peluang relatif lebih tinggi.
         </div>
       )}
     </div>

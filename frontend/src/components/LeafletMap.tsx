@@ -136,19 +136,20 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    // Center on Jabodetabek / Jakarta: latitude: -6.2088, longitude: 106.8456, zoom: 11
+    // Center on Jakarta and keep the initial view at the detail level shown in the dashboard.
     const map = L.map(mapContainerRef.current, {
-      center: [-6.32, 106.82],
-      zoom: 10,
+      center: [-6.25, 106.78],
+      zoom: 11,
       zoomControl: false,
       attributionControl: false,
-      minZoom: 9,
+      minZoom: 10,
       maxZoom: 18,
       doubleClickZoom: false,
+      maxBoundsViscosity: 0.8,
     });
     map.setMaxBounds([
-      [-6.75, 106.38],
-      [-5.98, 107.18],
+      [-6.75, 106.25],
+      [-5.98, 107.35],
     ]);
 
     mapInstanceRef.current = map;
@@ -171,7 +172,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     // Custom window events for decoupled map controls
     const handleZoomIn = () => map.zoomIn();
     const handleZoomOut = () => map.zoomOut();
-    const handleReset = () => map.flyTo([-6.32, 106.82], 10, { duration: 1 });
+    const handleReset = () => map.flyTo([-6.25, 106.78], 11, { duration: 1 });
 
     window.addEventListener('pawang:zoomin', handleZoomIn);
     window.addEventListener('pawang:zoomout', handleZoomOut);

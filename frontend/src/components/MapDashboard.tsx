@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { Flag } from 'lucide-react';
 import {
   TimeHorizon,
   BasemapType,
@@ -353,9 +354,10 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
           const gridId = selectedGridId ?? features[0]?.properties.grid_id;
           if (gridId) setReportDraft({ gridId });
         }}
-        className="absolute left-4 top-4 z-30 flex items-center gap-1.5 rounded-xl border border-[#22396F] bg-[#FFEBCC]/95 px-3 py-2 text-xs font-bold text-[#010736] shadow-lg backdrop-blur-md hover:bg-[#FFF9D2] disabled:opacity-50 dark:bg-[#0D1C42]/95 dark:text-[#FCF1D0] dark:hover:bg-[#22396F]"
+        className="absolute left-4 top-4 z-30 flex items-center gap-1.5 rounded-full border border-[#DADCE0] bg-white/95 px-3.5 py-2 text-xs font-semibold text-[#202124] shadow-md backdrop-blur-md transition hover:bg-[#F8F9FA] disabled:opacity-50 dark:border-[#3C4043] dark:bg-[#202124]/95 dark:text-[#E8EAED] dark:hover:bg-[#292A2D]"
         title="Laporkan kondisi jalan atau banjir saat ini"
       >
+        <Flag size={13} className="text-[#1A73E8] dark:text-[#8AB4F8]" />
         Lapor kondisi
       </button>
 
