@@ -23,6 +23,7 @@ from .areas import get_catalog
 from .audit import AuditLog
 from .cache import TTLCache
 from .config import Settings, get_settings
+from .floodwatch import FloodWatch, WatchMemory, WatchScheduler
 from .llm import LLM, NoLLM, QwenClient
 from .pipeline import Pipeline
 from .predictor import get_predictor
@@ -64,14 +65,22 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
     pipeline = Pipeline(s, tools, llm, TTLCache(s.cache_ttl_s), AuditLog(s.audit_dir, audit_enabled))
     advice_writer = AdviceWriter(llm)
     reports = ReportStore(s.reports_store, s.reports_ttl_h, demo_reports(catalog) if s.reports_demo else None)
+    # Flood Watch Agent: reads citizen reports only in live mode (replay days are years old; today's reports
+    # say nothing about them).
+    watch = FloodWatch(pipeline, llm, WatchMemory(s.watch_memory_path),
+                       reports=(lambda: [r for r in reports.active() if not r.get("demo")]) if s.data_mode == "live"
+                       else None, cooldown_h=s.watch_cooldown_h)
+    scheduler = WatchScheduler(watch, s.watch_interval_s if s.data_mode == "live" else 0)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         if s.data_mode == "live" and s.tma_live_enabled and s.tma_poll_s > 0:
             tools.tma_live.start_polling(s.tma_poll_s)
+        scheduler.start()
         try:
             yield
         finally:
+            scheduler.stop()
             if s.data_mode == "live" and s.tma_live_enabled and s.tma_poll_s > 0:
                 tools.tma_live.stop_polling()
 
@@ -79,6 +88,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
                        allow_methods=["GET", "POST"], allow_headers=["*"])
     app.state.pipeline = pipeline
+    app.state.watch = watch
 
     # Optional background poller: builds the water-level history (the model needs yesterday's level) even when nobody
     # calls the API. Off by default (PAWANG_TMA_POLL_S=0); the demo script turns it on for live mode.
@@ -159,6 +169,48 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
             return reports.add(rep, area.name, area.grid_id)
         except RateLimited:
             raise HTTPException(429, "Terlalu banyak laporan, coba lagi sebentar lagi.")
+
+    # ---- Flood Watch Agent ----------------------------------------------------------------------------------
+    @app.get("/api/v1/warnings")
+    def warnings(limit: int = Query(20, ge=1, le=100)) -> dict:
+        """Early-warning feed published by the Flood Watch Agent (newest first) and the last cycle's summary."""
+        mem = watch.memory.data
+        last = mem["decisions"][-1] if mem["decisions"] else None
+        return {"active": [{"grid_id": g, **v} for g, v in watch.memory.active().items()],
+                "warnings": list(reversed(mem["warnings"]))[:limit],
+                "last_cycle": None if last is None else {k: last[k] for k in (
+                    "cycle_id", "target_date", "at", "triggered", "decided_by") if k in last}}
+
+    @app.post("/api/v1/watch/run")
+    def watch_run(time: str = "1h", date: str | None = None) -> dict:
+        """Run one Flood Watch cycle now and return its full decision trace (the "why" behind each warning).
+        Replay mode needs ?date=YYYY-MM-DD; the cycle then acts as if it were that morning."""
+        target = resolve_date(time, date)
+        now = (dt.datetime.combine(target, dt.time(6, 0), tzinfo=WIB) if s.data_mode == "replay" else None)
+        return watch.cycle(target, now=now)
+
+    @app.post("/api/v1/watch/replay")
+    def watch_replay(start: str, end: str) -> dict:
+        """Replay mode only: run one cycle per day from start to end (at most 62 days) with a fresh, in-memory
+        memory, so a demo can show warnings appearing and escalating over a past flood period."""
+        if s.data_mode != "replay":
+            raise HTTPException(422, "watch replay needs PAWANG_DATA_MODE=replay")
+        d0, d1 = resolve_date("1h", start), resolve_date("1h", end)
+        if d1 < d0 or (d1 - d0).days > 61:
+            raise HTTPException(422, "end must be on or after start, at most 62 days")
+        replay = FloodWatch(pipeline, llm, WatchMemory(None), cooldown_h=s.watch_cooldown_h)
+        days = []
+        d = d0
+        while d <= d1:
+            dec = replay.cycle(d, now=dt.datetime.combine(d, dt.time(6, 0), tzinfo=WIB))
+            days.append({"date": d.isoformat(), "triggered": dec["triggered"], "decided_by": dec["decided_by"],
+                         "changed_areas": len(dec["changes"]), "published": dec["published"],
+                         "active": dec.get("active", {}), "cleared": dec.get("cleared", []),
+                         "suppressed": len(dec["suppressed"]), "guardrail_errors": dec["guardrail_errors"]})
+            d += dt.timedelta(days=1)
+        return {"start": d0.isoformat(), "end": d1.isoformat(), "days": days,
+                "warnings_total": sum(len(x["published"]) for x in days),
+                "days_triggered": sum(x["triggered"] for x in days)}
 
     return app
 

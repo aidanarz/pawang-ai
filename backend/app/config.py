@@ -82,6 +82,11 @@ class Settings:
         os.environ.get("PAWANG_REPORTS_STORE", str(BACKEND_DIR / "data" / "reports.jsonl"))))
     reports_demo: bool = field(default_factory=lambda: _bool("PAWANG_REPORTS_DEMO", True))   # example reports on the map
     reports_ttl_h: float = field(default_factory=lambda: float(os.environ.get("PAWANG_REPORTS_TTL_H", "6")))
+    # Flood Watch Agent (app/floodwatch.py): background cycle off unless the interval is > 0 (live mode only)
+    watch_interval_s: float = field(default_factory=lambda: float(os.environ.get("PAWANG_WATCH_INTERVAL_S", "0")))
+    watch_memory_path: Path = field(default_factory=lambda: Path(
+        os.environ.get("PAWANG_WATCH_MEMORY", str(BACKEND_DIR / "data" / "floodwatch_memory.json"))))
+    watch_cooldown_h: float = field(default_factory=lambda: float(os.environ.get("PAWANG_WATCH_COOLDOWN_H", "6")))
 
     # Audit log (one JSON line per request): the raw material for log audits and agent training
     audit_dir: Path = field(default_factory=lambda: Path(

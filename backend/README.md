@@ -124,6 +124,48 @@ What to know:
 - **Terms of use:** this reads a public page at a low rate for flood early warning. Check BPBD's terms before heavy or
   commercial use, and prefer an official data feed if BPBD offers one.
 
+## Flood Watch Agent (early warnings)
+
+`app/floodwatch.py`, design: "Agent plan and changes" section 2.1. One cycle:
+
+1. The pipeline predicts all 44 kecamatan for the target day.
+2. **Rules** compare with memory: tier rose to `medium_high`/`high` above the peak of the last 48 h, BPBD siaga rose,
+   or at least 2 citizen reports say genangan/banjir. Nothing changed: stop, **the LLM is not called**.
+3. **Qwen** investigates the flagged areas with read-only tools (`get_area_status`, `get_area_history`,
+   `get_reports`, `get_city_overview`; at most 4 calls; the code runs the tool, not the LLM) and proposes warnings.
+4. **Guardrail**: only flagged areas; level never above the cap (medium: waspada, medium_high: siaga, high: awas;
+   2+ flood reports allow siaga); message names the kecamatan, uses the model's risk word, only numbers from tool
+   results, no certainty or source claims. Any violation: the default rule action runs (high: siaga).
+5. A warning stays **active** while the area stays at medium_high or above and is not re-sent; it is lifted when the
+   tier falls below medium_high (and no flood reports support it).
+
+| Route | What |
+|---|---|
+| `GET /api/v1/warnings` | active warnings, recent warnings (newest first), last cycle summary |
+| `POST /api/v1/watch/run?date=YYYY-MM-DD` | run one cycle now; returns the full decision trace (changes, tool calls, proposal, guardrail result) |
+| `POST /api/v1/watch/replay?start=&end=` | replay mode only: one cycle per day (max 62 days), fresh memory; for demos |
+
+Live background cycle: `PAWANG_WATCH_INTERVAL_S` (0 = off). Memory: `backend/data/floodwatch_memory.json` (git-ignored).
+
+Evaluation against recorded floods (rules only, or `--qwen` with Ollama running):
+
+```powershell
+.venv\Scripts\python.exe -m eval.watch_replay --start 2020-01-01 --end 2020-03-31
+.venv\Scripts\python.exe -m eval.watch_replay --start 2020-01-01 --end 2020-03-31 --qwen
+```
+
+Rules chosen on the 2019 validation replay (Jan-Mar), then run once on 2020 (held-out test year):
+
+| Jan-Mar | Policy | Alerts sent | Precision (area-days) | Coverage of flooded area-days |
+|---|---|---|---|---|
+| 2019 | alert every high area-day | 397 | 7.3% | 28.7% |
+| 2019 | Flood Watch, rules only | 139 | 4.2% | 40.6% |
+| 2020 | alert every high area-day | 1168 | 20.4% | 73.9% |
+| 2020 | Flood Watch, rules only | 219 | 12.8% | 84.2% |
+
+Flood Watch sends far fewer alerts and keeps more flooded area-days under a warning, at a lower precision because a
+warning stays active for the whole risky period. The Qwen version has not been scored yet (needs Ollama on a GPU).
+
 ## Known gaps (from the design document)
 
 | Document says | Now | Why / next step |
