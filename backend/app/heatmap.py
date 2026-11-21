@@ -81,7 +81,27 @@ def heatmap_response(r: PipelineResult, horizon: str, center: tuple[float, float
 
 
 def hydrograph(r: PipelineResult, a: AreaResult, days: int = 7) -> list[dict]:
-    """Daily rainfall (mean over the kecamatan's grid points) and max water level for the last `days` days."""
+    """Hourly water level for live mode; daily rainfall and daily TMA fallback for replay."""
+    labels = ['12 jam lalu', '10', '8', '6', '4', 'Sekarang']
+    if r.water_level_hourly is not None and not r.water_level_hourly.empty:
+        h = r.water_level_hourly[r.water_level_hourly["station_id"].isin(a.area.station_ids)]
+        if not h.empty:
+            h = h.sort_values("ts")
+            latest = h["ts"].max()
+            out = []
+            for offset, label in zip([12, 10, 8, 6, 4, 0], labels):
+                target_ts = latest - pd.Timedelta(hours=offset)
+                candidates = h.iloc[(h["ts"] - target_ts).abs().argsort()]
+                nearest_ts = candidates.iloc[0]["ts"]
+                level = h[h["ts"] == nearest_ts].groupby("ts")["level_cm"].mean().iloc[0]
+                out.append({
+                    "time": label,
+                    "rainfall": 0,
+                    "waterLevel": round(float(level)),
+                    "threshold": None,
+                })
+            return out
+
     if r.rain is None:
         return []
     start = pd.Timestamp(r.target_date - dt.timedelta(days=days - 1))

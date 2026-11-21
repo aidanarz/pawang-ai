@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   title: 'Pawang AI — Real-Time Flood Prediction & Water Intelligence',
   description:
     'Advanced real-time flood forecasting, GIS water intelligence, and commuter early warning platform inspired by NOAA Water Prediction Service.',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
   keywords: [
     'Pawang AI',
     'Flood Prediction Jakarta',

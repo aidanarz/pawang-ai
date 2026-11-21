@@ -55,6 +55,7 @@ class PipelineResult:
     areas: list[AreaResult] = field(default_factory=list)
     rain: pd.DataFrame | None = None
     water_level: pd.DataFrame | None = None
+    water_level_hourly: pd.DataFrame | None = None
     verdicts: dict[str, Verdict] = field(default_factory=dict)
     message: str = ""
     cached: bool = False
@@ -177,7 +178,10 @@ class Pipeline:
         out = P.predict(fp, kf, mode="auto" if tma is not None else "rainfall_only")
         units = P.unit_inputs(kf, fp).set_index("cell_id")
         siaga = results["get_water_level"].extra.get("siaga", {}) if tma is not None else {}
+        latest_levels = results["get_water_level"].extra.get("latest", {}) if tma is not None else {}
+        hourly = results["get_water_level"].extra.get("hourly") if tma is not None else None
         res.rain, res.water_level = rain, tma
+        res.water_level_hourly = hourly if isinstance(hourly, pd.DataFrame) else None
         for a in areas:
             row = out[out["cell_id"] == a.cell_id]
             u = units.loc[a.cell_id] if a.cell_id in units.index else None
@@ -191,7 +195,12 @@ class Pipeline:
                 model_version=r["model_version"] if isinstance(r["model_version"], str) else None,
                 confidence="HIGH" if (mode == "full" and rain_v.ok and tma_v.ok) else "LOW",
                 rainfall_mm=_f(u["rain_d0"]) if u is not None else None,
-                water_level_cm=_f(u["tma_max"]) if u is not None and "tma_max" in u.index else None,
+                water_level_cm=(
+                    round(sum(latest_levels[s] for s in a.station_ids if s in latest_levels) /
+                          len([s for s in a.station_ids if s in latest_levels]))
+                    if latest_levels and any(s in latest_levels for s in a.station_ids)
+                    else (_f(u["tma_max"]) if u is not None and "tma_max" in u.index else None)
+                ),
                 siaga_level=max((siaga[s] for s in a.station_ids if s in siaga), key=SIAGA_RANK.get, default=None),
                 rain_prob_pct=(sum(v) / len(v)) if (v := [prob[p] for p in a.point_ids if p in prob]) else None,
             ))
