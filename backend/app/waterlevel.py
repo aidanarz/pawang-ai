@@ -248,12 +248,15 @@ class BpbdWaterLevel:
 
         latest_ts = h["ts"].max()
         start_ts = latest_ts - pd.Timedelta(hours=hours - 1)
-        h = h[(h["ts"] >= start_ts) & (h["ts"] <= latest_ts)][["station_id", "ts", "level_cm"]]
+        h = h[(h["ts"] >= start_ts) & (h["ts"] <= latest_ts)]
 
+        # Read siaga from the full rows: the returned frame keeps only station_id/ts/level_cm,
+        # and reading r.siaga from that subset raised AttributeError, which failed the whole water-level tool.
         latest = h.sort_values("ts").groupby("station_id").tail(1)
         latest_levels = {r.station_id: round(float(r.level_cm)) for r in latest.itertuples()}
-        siaga = {r.station_id: r.siaga for r in latest.itertuples() if isinstance(r.siaga, str)}
-        return h.reset_index(drop=True), {"latest": latest_levels, "siaga": siaga}
+        siaga = ({r.station_id: r.siaga for r in latest.itertuples() if isinstance(r.siaga, str)}
+                 if "siaga" in latest.columns else {})
+        return h[["station_id", "ts", "level_cm"]].reset_index(drop=True), {"latest": latest_levels, "siaga": siaga}
 
     def status(self) -> dict:
         s = self.state
