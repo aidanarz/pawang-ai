@@ -83,6 +83,12 @@ p, .text-justify, .text-justify-all {
   background: var(--scrollbar-thumb-hover);
 }
 
+/* Prevent layout shift when scrollbars appear */
+.overflow-y-auto,
+.stable-scrollbar {
+  scrollbar-gutter: stable;
+}
+
 /* Glassmorphism panel styling */
 .glass-panel {
   background: var(--panel-bg);
