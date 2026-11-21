@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   MapPinned,
-  ExternalLink,
+  CloudSun,
   Cpu,
   ShieldCheck,
   Map as MapIcon,
@@ -19,38 +19,41 @@ import { AreaSearch } from './AreaSearch';
 
 /* ─────────────────────────── data ─────────────────────────── */
 
-const SOURCES = [
+const SOURCES: ReadonlyArray<{
+  name: string;
+  url: string;
+  logo?: string;
+}> = [
   {
     name: 'Open-Meteo',
-    use: 'Prakiraan hujan hari prakiraan, hujan beberapa hari terakhir, dan peluang hujan.',
     url: 'https://open-meteo.com',
   },
   {
     name: 'BPBD DKI Jakarta',
-    use: 'Tinggi muka air sungai dan pintu air, diambil langsung dari halaman resminya.',
     url: 'https://bpbd.jakarta.go.id',
+    logo: '/assets/aistudio/image_3a852cc4.png',
   },
   {
     name: 'Satu Data Jakarta',
-    use: 'Riwayat tinggi muka air dan data kejadian banjir DKI untuk melatih model.',
     url: 'https://satudata.jakarta.go.id',
+    logo: '/assets/aistudio/image_1f84877c.png',
   },
   {
     name: 'Copernicus DEM (GLO-30)',
-    use: 'Elevasi tiap kecamatan, diambil dari AWS Open Data.',
     url: 'https://registry.opendata.aws/copernicus-dem/',
+    logo: '/assets/aistudio/image_ac2606e9.png',
   },
   {
     name: 'HDX COD-AB Indonesia',
-    use: 'Batas wilayah kecamatan DKI Jakarta.',
     url: 'https://data.humdata.org/dataset/indonesia-administrative-boundary-polygons-lines-and-places',
+    logo: '/assets/aistudio/image_60699540.png',
   },
   {
     name: 'OpenStreetMap',
-    use: 'Peta dasar interaktif.',
     url: 'https://www.openstreetmap.org',
+    logo: '/assets/aistudio/image_72744caf.png',
   },
-] as const;
+];
 
 const TIERS = [
   { name: 'Low', range: '< 0,8%', color: '#71A868' },
@@ -264,7 +267,7 @@ export const Landing: React.FC = () => {
               </p>
               <h1 className="mt-1 text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl lg:text-[88px]">
                 prediksi banjir<br />
-                <span className="text-[#1A73E8] dark:text-[#8AB4F8]">hari ini.</span>
+                <span className="text-[#1A73E8] dark:text-[#8AB4F8]">hari ini</span>
               </h1>
               <p className="mt-8 max-w-xl text-base leading-relaxed text-[#5F6368] sm:text-lg dark:text-[#9AA0A6]">
                 Cek peluang banjir per kecamatan di Jakarta lewat peta interaktif berbasis data curah hujan, tinggi muka air sungai, dan elevasi wilayah.
@@ -409,7 +412,7 @@ export const Landing: React.FC = () => {
               <span className={eyebrow}>Mengapa penting?</span>
               <p className="text-2xl text-[#5F6368] sm:text-5xl dark:text-[#9AA0A6]">Jakarta banjir</p>
               <h2 className="text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl lg:text-[104px]">
-                setiap tahun.
+                setiap tahun
               </h2>
             </div>
             <Clock
@@ -431,42 +434,51 @@ export const Landing: React.FC = () => {
       </section>
 
       {/* ══════════════ SUMBER DATA ══════════════ */}
-      <section id="sumber-data" className="bg-white px-5 py-24 sm:px-8 md:py-32 dark:bg-[#202124]">
+      <section id="sumber-data" className="bg-white px-5 py-24 text-black sm:px-8 md:py-32">
         <div className="mx-auto max-w-6xl">
-          <span className={eyebrow}>Transparansi</span>
-          <h2 className="text-4xl font-semibold tracking-tight sm:text-6xl">Sumber data</h2>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
-            Semua sumber bersifat terbuka dan dapat diverifikasi siapa saja.
-          </p>
+          <h2 className="text-center text-4xl font-semibold tracking-tight text-black sm:text-5xl">
+            Sumber data
+          </h2>
 
-          <div className="mt-10 overflow-x-auto rounded-3xl border border-[#DADCE0] dark:border-[#3C4043]">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead>
-                <tr className="bg-[#F8F9FA] text-xs font-semibold uppercase tracking-wider text-[#5F6368] dark:bg-[#292A2D] dark:text-[#9AA0A6]">
-                  <th className="px-6 py-4">Sumber</th>
-                  <th className="px-6 py-4">Kegunaan dalam sistem</th>
-                  <th className="px-6 py-4">Tautan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {SOURCES.map(s => (
-                  <tr key={s.name} className="border-t border-[#DADCE0] dark:border-[#3C4043]">
-                    <td className="px-6 py-4 font-semibold">{s.name}</td>
-                    <td className="px-6 py-4 text-[#5F6368] dark:text-[#9AA0A6]">{s.use}</td>
-                    <td className="px-6 py-4">
-                      <a
-                        href={s.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-medium text-[#1A73E8] hover:underline dark:text-[#8AB4F8]"
-                      >
-                        Kunjungi <ExternalLink size={12} />
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mx-auto mt-14 grid max-w-5xl grid-cols-2 place-items-center gap-x-6 gap-y-12 md:grid-cols-12">
+            {SOURCES.map((s, idx) => {
+              const colClass =
+                idx < 4
+                  ? 'md:col-span-3'
+                  : idx === 4
+                    ? 'md:col-span-3 md:col-start-4'
+                    : 'md:col-span-3 md:col-start-7';
+              return (
+                <a
+                  key={s.name}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.name}
+                  title={s.name}
+                  className={`${colClass} flex items-center justify-center rounded-xl transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A73E8]`}
+                >
+                  {s.logo ? (
+                    <div className="relative h-24 w-40 sm:h-28 sm:w-48">
+                      <Image
+                        src={s.logo}
+                        alt={s.name}
+                        fill
+                        sizes="(min-width: 640px) 192px, 160px"
+                        className="object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex h-24 w-40 flex-col items-center justify-center gap-1 text-black sm:h-28 sm:w-48">
+                      <CloudSun size={52} strokeWidth={1.75} className="text-black" aria-hidden />
+                      <span className="text-xl font-semibold tracking-tight text-black">
+                        OpenMeteo
+                      </span>
+                    </div>
+                  )}
+                </a>
+              );
+            })}
           </div>
         </div>
       </section>
