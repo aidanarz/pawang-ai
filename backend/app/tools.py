@@ -200,6 +200,8 @@ class ToolRegistry:
         except WaterLevelError as exc:
             refresh_error = str(exc)
         data, as_of, extra = self.tma_live.daily(station_ids, target_date)
+        hourly, hourly_extra = self.tma_live.hourly(station_ids)
+        extra = {**extra, **hourly_extra, "hourly": hourly}
         if data.empty:
             return ToolResult("get_water_level", ok=False, source="bpbd-scrape",
                               error=refresh_error or "no stored BPBD readings for these stations on the target days")

@@ -5,26 +5,38 @@ import { HydrographPoint } from '@/data/types';
 
 interface HydrographChartProps {
   data: HydrographPoint[];
+  currentLevel?: number | null;
 }
 
-export const HydrographChart: React.FC<HydrographChartProps> = ({ data }) => {
+export const HydrographChart: React.FC<HydrographChartProps> = ({ data, currentLevel }) => {
   // Convert daily timestamps into hourly checkpoints if needed, or preserve existing hourly timestamps
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    const isDaily = /^\d{4}-\d{2}-\d{2}$/.test(data[0].time);
-    if (!isDaily) return data;
+    const labels = ['12 jam lalu', '10', '8', '6', '4', 'Live'];
+    const isHourlyLabels = labels.includes(data[0].time);
+    if (isHourlyLabels) return data.slice(-6);
 
-    // Distribute daily points into hourly intervals across the day
-    const defaultHours = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:00'];
-    return defaultHours.map((hour, idx) => {
-      const srcIdx = Math.min(idx, data.length - 1);
+    const usable = data.filter((point) => point.waterLevel != null);
+    const latest = currentLevel ?? usable.at(-1)?.waterLevel ?? usable[0]?.waterLevel;
+    if (latest == null) return [];
+
+    const source = usable.slice(-6).map((point) => point.waterLevel);
+    if (source.length === 0) return [];
+
+    return labels.map((label, index) => {
+      const sourceIndex = source.length < 6
+        ? Math.floor((index / 5) * (source.length - 1))
+        : index;
+      const level = index === 5 ? latest : source[sourceIndex];
       return {
-        ...data[srcIdx],
-        time: hour,
+        time: label,
+        rainfall: 0,
+        waterLevel: level,
+        threshold: 0,
       };
     });
-  }, [data]);
+  }, [data, currentLevel]);
 
   if (!chartData || chartData.length === 0) return null;
 

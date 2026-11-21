@@ -480,7 +480,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
 
                     <div>
                       <SectionTitle>Grafik muka air per jam</SectionTitle>
-                      <HydrographChart data={analysis.hydrograph} />
+                      <HydrographChart
+                        data={analysis.hydrograph}
+                        currentLevel={analysis.water_level_cm}
+                      />
                     </div>
 
                     <Disclosure

@@ -236,6 +236,25 @@ class BpbdWaterLevel:
         siaga = {r.station_id: r.siaga for r in latest.itertuples() if isinstance(r.siaga, str)}
         return out, newest, {"siaga": siaga}
 
+    def hourly(self, station_ids: list[str], hours: int = 13) -> tuple[pd.DataFrame, dict]:
+        """Latest hourly readings for the requested stations over the last `hours` hours."""
+        h = self.store.load()
+        if h.empty:
+            return pd.DataFrame(columns=["station_id", "ts", "level_cm"]), {}
+
+        h = h[h["station_id"].isin(station_ids)]
+        if h.empty:
+            return pd.DataFrame(columns=["station_id", "ts", "level_cm"]), {}
+
+        latest_ts = h["ts"].max()
+        start_ts = latest_ts - pd.Timedelta(hours=hours - 1)
+        h = h[(h["ts"] >= start_ts) & (h["ts"] <= latest_ts)][["station_id", "ts", "level_cm"]]
+
+        latest = h.sort_values("ts").groupby("station_id").tail(1)
+        latest_levels = {r.station_id: round(float(r.level_cm)) for r in latest.itertuples()}
+        siaga = {r.station_id: r.siaga for r in latest.itertuples() if isinstance(r.siaga, str)}
+        return h.reset_index(drop=True), {"latest": latest_levels, "siaga": siaga}
+
     def status(self) -> dict:
         s = self.state
         return {"url": self.url, "last_fetch": s.last_fetch.isoformat() if s.last_fetch else None,
