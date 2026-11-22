@@ -148,6 +148,8 @@ export interface RouteResponse {
   target_date: string;
   verdict: RouteVerdict;
   message: string;
+  /** Who worded `message`: the LLM (checked by rules) or the rules themselves. */
+  explanation_by: 'qwen' | 'rules';
   recommended: RouteOption;
   fastest: RouteOption;
   same_as_fastest: boolean;

@@ -29,8 +29,9 @@ from .llm import LLM, NoLLM, QwenClient
 from .pipeline import Pipeline
 from .predictor import get_predictor
 from .reports import RateLimited, ReportIn, ReportStore, demo_reports
+from .prompts import ROUTE_PROMPT_VERSION
 from .routing import (MAX_KM, MIN_METERS, NoRoute, PerMinute, RiskMap, Projector, RouteRequest, RoutingError,
-                      ValhallaClient, distance_m, plan_route)
+                      ValhallaClient, distance_m, explain_route, plan_route)
 from .tools import ToolRegistry
 
 WIB = dt.timezone(dt.timedelta(hours=7))
@@ -205,11 +206,16 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
             log.warning("routing failed: %s", exc)
             raise HTTPException(503, "Layanan routing tidak tersedia, coba lagi nanti.")
 
+        # The LLM may re-word the explanation; its text is used only if it passes the checks (else the rule text).
+        message, decided_by, errs = explain_route(llm, plan, s.route_llm_timeout_s)
+        pipeline.audit.write(res.request_id, {"step": "route_explain", "decided_by": decided_by,
+                                              "violations": errs, "prompt_version": ROUTE_PROMPT_VERSION})
+
         def view(r) -> dict:
             return {"coordinates": [[round(la, 5), round(lo, 5)] for la, lo in r.coords], "km": round(r.km, 1),
                     "minutes": round(r.minutes), "high_km": round(r.high_km, 1), "soft_km": round(r.soft_km, 1),
                     "flood_points": r.flood_points, "streets": [n for n, _ in r.streets[:5] if n]}
-        out = {"target_date": target.isoformat(), "verdict": plan.verdict, "message": plan.message,
+        out = {"target_date": target.isoformat(), "verdict": plan.verdict, "message": message, "explanation_by": decided_by,
                "recommended": view(plan.recommended), "fastest": view(plan.fastest),
                "same_as_fastest": plan.recommended is plan.fastest, "origin_area": plan.origin_area,
                "destination_area": plan.destination_area, "candidates": plan.candidates,

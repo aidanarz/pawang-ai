@@ -114,6 +114,11 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({
             </button>
           </div>
           <p className="text-[13px] leading-relaxed text-[#3C4043] dark:text-[#E8EAED]/90">{route.message}</p>
+          {route.explanation_by === 'qwen' && (
+            <p className="text-[10.5px] text-[#5F6368] dark:text-[#9AA0A6]">
+              Penjelasan ditulis AI; angka, nama jalan, dan klaimnya dicek aturan terhadap hasil rute.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2 text-[12px]">
             <div className="rounded-xl border border-[#DADCE0] p-2 dark:border-[#3C4043]">
               <div className="flex items-center gap-1.5 font-semibold" style={{ color: verdict.color }}>

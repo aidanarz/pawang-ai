@@ -17,11 +17,24 @@ Every change (also the ones made with an AI assistant): what, which files, why. 
   503 when the engine is down, 422 when there is no road). Citizen reports count in live mode only, never the demo ones.
 - `backend/app/config.py`, `.env.example`: `PAWANG_ROUTE_URL`, `PAWANG_ROUTE_COSTING`, `PAWANG_ROUTE_TIMEOUT_S`,
   `PAWANG_ROUTE_PER_MINUTE`. `requirements-serve.txt`: `shapely`. The engine request carries a generic User-Agent.
-- **New** `backend/tests/test_routing.py`: 15 tests (mock engine). Backend total 109.
+- **New** `backend/tests/test_routing.py`: 29 tests (mock engine, scripted LLM). Backend total 123.
+- **LLM explanation** (`explain_route` in `routing.py`, prompt `ROUTE_PROMPT_VERSION 2026-11-22.4` in `prompts.py`):
+  Qwen may re-word the explanation; its text is shown only if it passes `check_route_text`, else the rule text is used.
+  The response says who worded it (`explanation_by`: `qwen` or `rules`) and the choice is written to the audit log.
+  Checks: no digits (the cards show the numbers), no weather talk, no reassurance ("tanpa khawatir"), no certainty
+  claim, no source claim, every "Jalan ..." must be a street of the route, and a `reduced`/`unavoidable` verdict may
+  not be described as avoided (negation-aware). The LLM is given no numbers, only words ("sedikit", "berkurang, tetapi
+  masih ada"). Settings: `PAWANG_ROUTE_LLM_TIMEOUT_S` (20); the LLM runs only when it is enabled (`QWEN_ENABLED`).
+- **New** `backend/eval/route_explain_check.py`: runs the real Qwen on one plan per verdict and counts guardrail passes.
+  Measured with `qwen2.5:7b` (the only model installed here; the default `qwen3.5:4b` was not): 20/20 passed after
+  three rounds of fixes. First rounds found real problems: Qwen copied numbers and used them for the wrong thing
+  ("2 km still exposed", really the detour length), invented weather, and over-reassured; and my own check rejected an
+  honest negated sentence. A call takes 11-14 s on this machine (CPU), so a route request waits that long once (cached
+  after). The guardrail cannot verify meaning, e.g. one `reduced` text said "titik banjir laporan warga" although none counted.
 - Frontend: **new** `components/RoutePlanner.tsx` (replaces the "Jalur alternatif / evakuasi" text in the Saran tab:
   from = selected area, to = kecamatan dropdown or a click on the map), route layer and destination picking in
   `LeafletMap.tsx`, state in `MapDashboard.tsx`, proxy `app/api/v1/route/route.ts`, `utils/routeStyle.ts` + test, types.
-- Not done: LLM wording of the explanation (the text is rule-built), shelters as destinations, address search.
+- Not done: shelters as destinations, address search.
 - Real check (replay 2020-01-20, 40 random kecamatan pairs): 39 already clear, 1 rerouted (Tebet to Pesanggrahan,
   1.0 km of High area avoided for +3.4 km, +12 min).
 

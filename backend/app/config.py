@@ -86,6 +86,7 @@ class Settings:
     route_url: str = field(default_factory=lambda: os.environ.get("PAWANG_ROUTE_URL", "https://valhalla1.openstreetmap.de"))
     route_costing: str = field(default_factory=lambda: os.environ.get("PAWANG_ROUTE_COSTING", "motor_scooter"))
     route_timeout_s: float = field(default_factory=lambda: float(os.environ.get("PAWANG_ROUTE_TIMEOUT_S", "30")))
+    route_llm_timeout_s: float = field(default_factory=lambda: float(os.environ.get("PAWANG_ROUTE_LLM_TIMEOUT_S", "20")))
     route_per_minute: int = field(default_factory=lambda: int(os.environ.get("PAWANG_ROUTE_PER_MINUTE", "20")))
 
     # Flood Watch Agent (app/floodwatch.py): background cycle off unless the interval is > 0 (live mode only)

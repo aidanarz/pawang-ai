@@ -10,9 +10,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
-from app.routing import (Route, MAX_EXCLUDE, MAX_EXTRA_CALLS, ENDPOINT_FREE_M, Projector, RiskMap, ValhallaClient,
+from app.llm import NoLLM
+from app.routing import (check_route_text, route_facts, explain_route, Route, MAX_EXCLUDE, MAX_EXTRA_CALLS, ENDPOINT_FREE_M, Projector, RiskMap, ValhallaClient,
                          decode_polyline6, distance_m, plan_route)
-from conftest import FLOOD_DAY
+from conftest import FLOOD_DAY, FakeLLM
 
 O, D = (-6.200, 106.800), (-6.200, 106.900)          # about 11 km apart, east-west
 ZONE = [[106.840, -6.210], [106.860, -6.210], [106.860, -6.190], [106.840, -6.190], [106.840, -6.210]]   # [lng, lat]
@@ -183,3 +184,81 @@ def test_route_numbers_are_not_street_names():
     t = trip(STRAIGHT, "2", 11.0, 20)
     t["legs"][0]["maneuvers"].append({"street_names": ["Jalan Raya Bogor"], "length": 3.0})
     assert [n for n, _ in ValhallaClient._parse(t).streets] == ["Jalan Raya Bogor"]
+
+
+# ---- LLM explanation: used only when it passes the checks --------------------------------------------------------------
+def safe_plan():
+    return plan_route(engine([]), risk("high"), O, D)         # verdict "safe", detour via "Jalan Pesisir"
+
+
+def reply(text):
+    return FakeLLM({"route_explainer": {"explanation": text}})
+
+
+def good_text(p):
+    return "Rute alternatif lewat Jalan Pesisir menghindari area berisiko tinggi, dengan jarak dan waktu sedikit lebih panjang."
+
+
+def test_a_checked_llm_explanation_replaces_the_rule_text():
+    p = safe_plan()
+    text, by, errs = explain_route(reply(good_text(p)), p)
+    assert by == "qwen" and errs == [] and text == good_text(p)
+
+
+@pytest.mark.parametrize("bad, why", [
+    ("Lewat Jalan Jenderal Sudirman, lebih lancar.", "street not in the route result"),
+    ("Rute ini menambah 25 menit perjalanan.", "numbers in the explanation"),
+    ("Tambahan 3 km dari rute tercepat.", "numbers in the explanation"),           # a correct number is still refused
+    ("Hati-hati, hujan deras diperkirakan sore ini.", "weather talk or reassurance"),
+    ("Anda bisa lewat tanpa khawatir.", "weather talk or reassurance"),
+    ("Dijamin tidak banjir di rute ini.", "certainty claim"),
+    ("BMKG memprediksi rute ini aman.", "attributes information to a source"),
+    ("", "empty"),
+])
+def test_a_bad_llm_explanation_falls_back_to_the_rule_text(bad, why):
+    p = safe_plan()
+    text, by, errs = explain_route(reply(bad), p)
+    assert by == "rules" and text == p.message and any(why in e for e in errs)
+
+
+def test_an_explanation_may_not_claim_the_risk_was_avoided_when_it_was_not():
+    p = plan_route(engine([], crossing_only=True), risk("high"), O, D)           # verdict "unavoidable"
+    assert p.verdict == "unavoidable"
+    text, by, errs = explain_route(reply("Jalur ini bebas banjir, silakan lewat."), p)
+    assert by == "rules" and any("although the verdict" in e for e in errs)
+    ok, by_ok, _ = explain_route(reply("Tidak ada rute yang menghindari area berisiko, pertimbangkan menunda perjalanan."), p)
+    assert by_ok == "qwen"
+
+
+def test_without_an_llm_or_with_a_broken_reply_the_rule_text_is_used():
+    p = safe_plan()
+    assert explain_route(NoLLM(), p) == (p.message, "rules", [])
+    assert explain_route(FakeLLM({"route_explainer": "not json"}), p)[1] == "rules"
+    assert explain_route(FakeLLM({}), p)[1] == "rules"
+
+
+def test_route_endpoint_reports_who_worded_the_explanation(replay_settings):
+    def with_llm(text):
+        http = httpx.Client(transport=httpx.MockTransport(
+            lambda req: httpx.Response(200, json={"trip": trip(STRAIGHT, "Jalan Raya Timur", 11.0, 20)})))
+        return TestClient(create_app(replay_settings, llm=reply(text), http=http))
+    ok = with_llm("Tidak ada rute yang menghindari area berisiko, pertimbangkan menunda perjalanan.")
+    j = ok.post("/api/v1/route", json=REQ).json()
+    assert j["explanation_by"] == "qwen" and j["message"].startswith("Tidak ada rute")
+    bad = with_llm("Aman, dijamin bebas banjir.").post("/api/v1/route", json=REQ).json()
+    assert bad["explanation_by"] == "rules" and "dijamin" not in bad["message"]
+    assert app_client(replay_settings).post("/api/v1/route", json=REQ).json()["explanation_by"] == "rules"
+
+
+def test_the_plain_word_jalan_is_not_mistaken_for_a_street_name():
+    facts = route_facts(safe_plan())
+    assert check_route_text("Jalan yang dilewati sedikit lebih jauh, jalan alternatif ini menghindari area berisiko.", facts) == []
+    assert any("street not in" in e for e in check_route_text("Lewat jalan Sudirman saja.", facts))
+    assert check_route_text("Lewat jalan Pesisir saja.", facts) == []
+
+
+def test_a_negated_overclaim_phrase_is_the_honest_sentence_and_passes():
+    reduced = route_facts(plan_route(engine([]), risk("high"), O, D))
+    reduced["vonis"] = "reduced"
+    assert check_route_text("Tidak ada rute yang sepenuhnya menghindari area berisiko.", reduced) == []
+    assert any("claims the risk" in e for e in check_route_text("Rute ini sepenuhnya menghindari area berisiko.", reduced))

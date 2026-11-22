@@ -31,7 +31,7 @@ rainfall-only model / "data unavailable" -> model -> risk tier -> advice (Qwen o
 
 ```powershell
 # backend (from backend/): run ONE worker, cache, scheduler and memory are per process
-python -m pytest -q                                   # must pass before every push (109 at last review)
+python -m pytest -q                                   # must pass before every push (123 at last review)
 python -m uvicorn app.main:app --port 8000            # restart after code changes unless you pass --reload
 $env:PAWANG_DATA_MODE="replay"                        # or live; QWEN_ENABLED=false runs without the LLM
 python -m eval.watch_replay --start 2020-01-01 --end 2020-03-31
@@ -50,7 +50,8 @@ npm run typecheck; npm run lint; npm test; npm run dev
 - **Citizen reports are unverified.** They show on the map and may support an early warning, but never change a
   probability or a tier. Report text reaching an LLM is quoted data, never instructions.
 - **Routes come from the routing engine** (Valhalla, `motor_scooter`), never from an LLM. Only tier `high` and reported
-  flood points force a detour.
+  flood points force a detour. Qwen may word the route explanation, but only through `check_route_text` (no digits,
+  no invented streets, no reassurance); otherwise the rule text is used.
 - Do not invent data. A field with no source is `null` / "Belum tersedia", not a guess.
 - Requests to outside services carry no project or personal names (generic User-Agent).
 - Language: UI and user-facing text in Indonesian; code, comments and commit messages in English.
@@ -74,9 +75,10 @@ npm run typecheck; npm run lint; npm test; npm run dev
 
 - **Built:** model + heatmap, advice with guardrails, citizen reports, landing page and map, Flood Watch Agent MVP,
   alternative route. Old Agents 1-3 still run in the pipeline and are removed only after Flood Watch is tested with Qwen.
-- **Not built:** chatbot, frontend banner for `GET /api/v1/warnings`, LLM wording of route explanations, shelters, adaptive
-  Flood Watch interval.
-- **Not verified:** real Qwen quality (Ollama was not running in the last sessions); the route UI in a browser.
+- **Not built:** chatbot, frontend banner for `GET /api/v1/warnings`, shelters as route destinations, adaptive Flood Watch
+  interval.
+- **Not verified:** the route UI in a browser; Flood Watch with real Qwen. Route explanation was measured with the real
+  `qwen2.5:7b` (20/20 guardrail passes via `python -m eval.route_explain_check`); the default `qwen3.5:4b` was not installed.
 - **Open findings:** no lock on `FloodWatch.cycle()`, unauthenticated `POST /api/v1/watch/*`, audit only on triggered
   cycles, one memory file for both modes. Details and next steps: latest file in `docs/updates/`.
 - Flood Watch's evaluation (2019 validation, 2020 test) is the rules-only version; the LLM's added value is unproven.

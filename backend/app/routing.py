@@ -12,8 +12,11 @@ route and asking again. A self-hosted Valhalla has no such cap, but the same cod
 """
 from __future__ import annotations
 
+import inspect
+import json
 import logging
 import math
+import re
 import threading
 import time
 from collections import deque
@@ -24,6 +27,8 @@ from pydantic import BaseModel, Field
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
 
+from .guardrails import CERTAINTY_PHRASES, MAX_TEXT_CHARS, _NUM, _norm_num, check_source_claims
+from .prompts import ROUTE_EXPLAIN_SYSTEM
 from .reports import LAT_RANGE, LON_RANGE
 
 log = logging.getLogger("pawang.routing")
@@ -332,3 +337,88 @@ def distance_m(a: tuple[float, float], b: tuple[float, float]) -> float:
     p = Projector(a[0], a[1])
     x, y = p.xy(*b)
     return math.hypot(x, y)
+
+
+# ---- LLM explanation (the rules above stay in charge: the LLM only words the result) --------------------------------
+# "Tidak ada rute yang sepenuhnya menghindari area" is the honest sentence, so a negation earlier in the same
+# sentence clears the phrase.
+_OVERCLAIM = re.compile(r"bebas banjir|aman dilalui|aman dilewati|menghindari seluruh|sepenuhnya menghindari")
+_NEGATION = re.compile(r"\b(?:tidak|belum|bukan)\b")
+_REASSURE = re.compile(r"tanpa khawatir|tidak perlu khawatir|jangan khawatir")
+_WEATHER = re.compile(r"hujan|cuaca")
+# "Jalan Raya Timur" / "jalan Raya Timur" / "Jl. Pesisir": the word followed by a capital letter or digit. The plain
+# noun ("jalan yang dilewati") is not a street name.
+_JALAN = re.compile(r"\b(?i:jalan|jl\.?)\s+(?=[A-Z0-9])")
+
+
+def _amount(x: float, small: float, big: float) -> str:
+    return "tidak ada" if x <= 0 else "sedikit" if x < small else "sedang" if x < big else "cukup banyak"
+
+
+def route_facts(plan: Plan) -> dict:
+    """What the LLM is told. No numbers on purpose: the cards beside the text show them, and a model that is given
+    "3.0" and "2.2" will copy them, sometimes for the wrong thing (measured with Qwen 7B on 2026-11-22)."""
+    f, r = plan.fastest, plan.recommended
+    exposed = lambda x: x.high_km > 0 or x.flood_points > 0           # noqa: E731
+    if not exposed(r):
+        left = "tidak ada"
+    elif r is f:
+        left = "sama dengan rute tercepat"
+    else:
+        left = "berkurang, tetapi masih ada"
+    return {"vonis": plan.verdict, "asal": plan.origin_area, "tujuan": plan.destination_area,
+            "rute_tercepat_melewati_area_berisiko": "ya" if exposed(f) else "tidak",
+            "rute_disarankan": {"paparan_area_berisiko_tinggi_dan_titik_banjir": left,
+                                "tambahan_jarak": _amount(r.km - f.km, 3, 8),
+                                "tambahan_waktu": _amount(r.minutes - f.minutes, 10, 25),
+                                "jalan": [n for n, _ in r.streets[:5] if n]},
+            "rute_sama_dengan_tercepat": r is f,
+            "titik_banjir_laporan_warga_dihitung": "ya" if plan.flood_points_known else "tidak"}
+
+
+def check_route_text(text: object, facts: dict) -> list[str]:
+    """No numbers (the cards beside the text show them; a number used for the wrong thing, such as the detour
+    length as the remaining exposure, passes any "numbers must appear in the facts" check), no weather talk (the
+    facts hold none), no invented streets, no certainty or reassurance, no overclaim for a verdict that did not
+    avoid the risk. Found with the real Qwen 7B on 2026-11-22.
+    shortcut: only streets written as "Jalan ..." / "Jl. ..." are checked; other names (a roundabout, a toll road)
+    are not, and the prompt asks for exact names. Upgrade when the chatbot reuses this."""
+    if not isinstance(text, str) or not text.strip():
+        return ["explanation is empty"]
+    errs, low = [], text.lower()
+    if len(text) > MAX_TEXT_CHARS:
+        errs.append(f"longer than {MAX_TEXT_CHARS} characters")
+    errs += [f"certainty claim: '{p}'" for p in CERTAINTY_PHRASES if p in low]
+    errs += check_source_claims(text)
+    in_names = {_norm_num(n) for s in facts["rute_disarankan"]["jalan"] for n in _NUM.findall(s)}     # "Jalan 4"
+    stray = sorted({n for n in _NUM.findall(text) if _norm_num(n) not in in_names})
+    if stray:
+        errs.append(f"numbers in the explanation (they belong on the cards): {stray}")
+    if m := (_WEATHER.search(low) or _REASSURE.search(low)):
+        errs.append(f"weather talk or reassurance not backed by the route result: '{m.group(0)}'")
+    streets = [re.sub(r"^(jalan|jl\.?)\s+", "", s.lower()) for s in facts["rute_disarankan"]["jalan"]]
+    for m in _JALAN.finditer(text):
+        rest = low[m.end():]
+        if not any(rest.startswith(s) for s in streets):
+            errs.append(f"street not in the route result: '{text[m.start():m.end() + 24].strip()}'")
+    if facts["vonis"] in ("reduced", "unavoidable"):
+        for sentence in re.split(r"[.!?]+", low):
+            if (m := _OVERCLAIM.search(sentence)) and not _NEGATION.search(sentence[:m.start()]):
+                errs.append(f"claims the risk was avoided although the verdict is '{facts['vonis']}': '{m.group(0)}'")
+                break
+    return errs
+
+
+def explain_route(llm, plan: Plan, timeout_s: float | None = None) -> tuple[str, str, list[str]]:
+    """(text, decided_by, violations). The LLM's wording is used only when it passes the checks; otherwise, or when
+    the LLM is off or fails, the rule-built message is used."""
+    if not llm.available():
+        return plan.message, "rules", []
+    facts = route_facts(plan)
+    kw = {"timeout": timeout_s} if timeout_s and "timeout" in inspect.signature(llm.complete_json).parameters else {}
+    call = llm.complete_json("route_explainer", ROUTE_EXPLAIN_SYSTEM, json.dumps(facts, ensure_ascii=False), **kw)
+    if call.error or not isinstance(call.parsed, dict):
+        return plan.message, "rules", [call.error or "reply is not an object"]
+    text = call.parsed.get("explanation")
+    errs = check_route_text(text, facts)
+    return (plan.message, "rules", errs) if errs else (text.strip(), "qwen", [])
