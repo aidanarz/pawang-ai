@@ -127,3 +127,34 @@ export interface BackendStatus {
   /** Server default day (PAWANG_DEMO_DATE) for replay mode. */
   demo_date: string | null;
 }
+
+/** One road route from POST /api/v1/route. coordinates are [lat, lng]. */
+export interface RouteOption {
+  coordinates: Array<[number, number]>;
+  km: number;
+  minutes: number;
+  /** Km of the route inside areas the model rates High. */
+  high_km: number;
+  /** Km inside Medium-High areas (only breaks ties, never forces a detour). */
+  soft_km: number;
+  /** Citizen-reported flood points within about 120 m of the route. */
+  flood_points: number;
+  streets: string[];
+}
+
+export type RouteVerdict = 'clear' | 'safe' | 'reduced' | 'unavoidable';
+
+export interface RouteResponse {
+  target_date: string;
+  verdict: RouteVerdict;
+  message: string;
+  /** Who worded `message`: the LLM (checked by rules) or the rules themselves. */
+  explanation_by: 'qwen' | 'rules';
+  recommended: RouteOption;
+  fastest: RouteOption;
+  same_as_fastest: boolean;
+  origin_area: string | null;
+  destination_area: string | null;
+  flood_points_known: number;
+  profile: string;
+}

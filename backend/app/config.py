@@ -82,6 +82,13 @@ class Settings:
         os.environ.get("PAWANG_REPORTS_STORE", str(BACKEND_DIR / "data" / "reports.jsonl"))))
     reports_demo: bool = field(default_factory=lambda: _bool("PAWANG_REPORTS_DEMO", True))   # example reports on the map
     reports_ttl_h: float = field(default_factory=lambda: float(os.environ.get("PAWANG_REPORTS_TTL_H", "6")))
+    # Alternative route (app/routing.py). Public Valhalla server: demo use only, self-host for real traffic.
+    route_url: str = field(default_factory=lambda: os.environ.get("PAWANG_ROUTE_URL", "https://valhalla1.openstreetmap.de"))
+    route_costing: str = field(default_factory=lambda: os.environ.get("PAWANG_ROUTE_COSTING", "motor_scooter"))
+    route_timeout_s: float = field(default_factory=lambda: float(os.environ.get("PAWANG_ROUTE_TIMEOUT_S", "30")))
+    route_llm_timeout_s: float = field(default_factory=lambda: float(os.environ.get("PAWANG_ROUTE_LLM_TIMEOUT_S", "20")))
+    route_per_minute: int = field(default_factory=lambda: int(os.environ.get("PAWANG_ROUTE_PER_MINUTE", "20")))
+
     # Flood Watch Agent (app/floodwatch.py): background cycle off unless the interval is > 0 (live mode only)
     watch_interval_s: float = field(default_factory=lambda: float(os.environ.get("PAWANG_WATCH_INTERVAL_S", "0")))
     watch_memory_path: Path = field(default_factory=lambda: Path(
