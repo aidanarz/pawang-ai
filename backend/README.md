@@ -174,3 +174,16 @@ warning stays active for the whole risky period. The Qwen version has not been s
 | Water level from Google Flood Hub | Live: scraped from the BPBD DKI page (`app/waterlevel.py`); replay: archive | The model's water-level features come from Jakarta's gauges in cm, which Flood Hub does not provide. BPBD reports the same kind of gauges in the same unit. See "Live water level" below for the limits. |
 | PostgreSQL + PostGIS static features | Model CSV files | Same data; move to PostGIS when the DB schema is ready. |
 | Redis cache | In-memory | Same interface; swap when deployed on a server. |
+
+
+## Alternative route
+
+`POST /api/v1/route` with `{"origin": {"lat", "lon"}, "destination": {"lat", "lon"}, "time": "5h", "date": "YYYY-MM-DD"}`
+returns the fastest road route and the recommended one (least exposed to model-tier High areas and citizen flood
+reports), a verdict (`clear`, `safe`, `reduced`, `unavoidable`) and a short Indonesian explanation.
+
+- Routing engine: Valhalla, profile `PAWANG_ROUTE_COSTING` (default `motor_scooter`), at `PAWANG_ROUTE_URL`. The default
+  is the public FOSSGIS server, **for demos only**; it limits `exclude_polygons` to 10 km in total, so avoidance uses
+  `exclude_locations` (max 50 points). Self-host Valhalla for real traffic.
+- 20 requests per minute for everyone (`PAWANG_ROUTE_PER_MINUTE`); identical requests are cached like the heatmap.
+- Citizen reports are used in live mode only (replay days are years old), and never the demo examples.

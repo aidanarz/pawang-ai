@@ -9,6 +9,8 @@ import {
   EvacuationCenter,
 } from '@/data/types';
 import { colorAreas } from '@/utils/areaColors';
+import type { RouteResponse } from '@/data/types';
+import { FASTEST_ROUTE_COLOR, ROUTE_VERDICTS } from '@/utils/routeStyle';
 import { REPORT_CONDITIONS, timeAgo, type LiveReport } from '@/data/reportConditions';
 import { JAKARTA_ADMIN_BOUNDARY } from '@/data/jakartaBoundary';
 
@@ -28,6 +30,10 @@ interface LeafletMapProps {
   reports: LiveReport[];
   isReportPicking: boolean;
   onPickReportLocation: (gridId: string, position: [number, number]) => void;
+  route: RouteResponse | null;
+  /** Next click on the map chooses the route destination. */
+  isRoutePicking: boolean;
+  onPickRouteDestination: (position: [number, number]) => void;
 }
 
 const escapeHtml = (s: string) =>
@@ -94,12 +100,18 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   reports,
   isReportPicking,
   onPickReportLocation,
+  route,
+  isRoutePicking,
+  onPickRouteDestination,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef(features);
   const onSelectGridRef = useRef(onSelectGrid);
   const onPickReportLocationRef = useRef(onPickReportLocation);
   const isReportPickingRef = useRef(isReportPicking);
+  const isRoutePickingRef = useRef(isRoutePicking);
+  const onPickRouteDestinationRef = useRef(onPickRouteDestination);
+  const routeLayerRef = useRef<L.LayerGroup | null>(null);
   const reportsLayerRef = useRef<L.LayerGroup | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -132,6 +144,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     isReportPickingRef.current = isReportPicking;
   }, [isReportPicking]);
 
+  useEffect(() => {
+    isRoutePickingRef.current = isRoutePicking;
+    onPickRouteDestinationRef.current = onPickRouteDestination;
+  }, [isRoutePicking, onPickRouteDestination]);
+
   // 1. Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
@@ -159,6 +176,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     evacLayerRef.current = L.layerGroup().addTo(map);
     radarCircleLayerRef.current = L.layerGroup().addTo(map);
     selectedLocationLayerRef.current = L.layerGroup().addTo(map);
+    routeLayerRef.current = L.layerGroup().addTo(map);
     reportsLayerRef.current = L.layerGroup().addTo(map);
     jakartaBoundaryLayerRef.current = L.geoJSON(JAKARTA_ADMIN_BOUNDARY as GeoJSON.GeoJsonObject, {
       style: {
@@ -216,13 +234,20 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     };
 
     const handleMapDoubleClick = (event: L.LeafletMouseEvent) => {
-      if (isReportPickingRef.current) return;
+      if (isReportPickingRef.current || isRoutePickingRef.current) return;
       if (event.originalEvent.button !== 0) return;
       event.originalEvent.preventDefault();
       inspectMapCoordinate(event);
     };
 
     const handleMapClick = (event: L.LeafletMouseEvent) => {
+      if (isRoutePickingRef.current) {
+        const { lat, lng } = event.latlng;
+        if (JAKARTA_ADMIN_BOUNDARY.features.some((f) => isPointInBoundary(lng, lat, f.geometry))) {
+          onPickRouteDestinationRef.current([lat, lng]);
+        }
+        return;
+      }
       if (!isReportPickingRef.current) return;
       const { lat, lng } = event.latlng;
       const isInsideJakarta = JAKARTA_ADMIN_BOUNDARY.features.some((feature) =>
@@ -494,6 +519,34 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         .addTo(group);
     });
   }, [reports]);
+
+  // 10. Alternative route: the fastest road (grey, dashed) under the recommended road (coloured by verdict).
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const group = routeLayerRef.current;
+    if (!map || !group) return;
+    group.clearLayers();
+    if (!route) return;
+    const color = ROUTE_VERDICTS[route.verdict].color;
+    if (!route.same_as_fastest) {
+      L.polyline(route.fastest.coordinates, { color: FASTEST_ROUTE_COLOR, weight: 4, opacity: 0.85, dashArray: '6 8' }).addTo(group);
+    }
+    const rec = route.recommended.coordinates;
+    L.polyline(rec, { color: '#ffffff', weight: 9, opacity: 0.9 }).addTo(group);
+    L.polyline(rec, { color, weight: 6, opacity: 1 }).addTo(group);
+    const pin = (at: [number, number], letter: string, bg: string) =>
+      L.marker(at, {
+        icon: L.divIcon({
+          className: 'route-pin',
+          html: `<div style="width:24px;height:24px;border-radius:50%;background:${bg};border:3px solid #fff;color:#fff;font:700 12px/18px sans-serif;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.5)">${letter}</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        }),
+      }).addTo(group);
+    pin(rec[0], 'A', '#34A853');
+    pin(rec[rec.length - 1], 'B', '#EA4335');
+    map.fitBounds(L.latLngBounds([...rec, ...route.fastest.coordinates]), { padding: [60, 60], maxZoom: 15 });
+  }, [route]);
 
   // 8. Keep the location marker independent from the selected analysis grid.
   useEffect(() => {

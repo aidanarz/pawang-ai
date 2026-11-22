@@ -8,6 +8,7 @@ only has to point its fetch at this server instead of the mock route handlers.
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import re
 from contextlib import asynccontextmanager
 
@@ -28,9 +29,12 @@ from .llm import LLM, NoLLM, QwenClient
 from .pipeline import Pipeline
 from .predictor import get_predictor
 from .reports import RateLimited, ReportIn, ReportStore, demo_reports
+from .routing import (MAX_KM, MIN_METERS, NoRoute, PerMinute, RiskMap, Projector, RouteRequest, RoutingError,
+                      ValhallaClient, distance_m, plan_route)
 from .tools import ToolRegistry
 
 WIB = dt.timezone(dt.timedelta(hours=7))
+log = logging.getLogger("pawang.main")
 HORIZONS = {"1h": 1, "3h": 3, "5h": 5, "12h": 12, "24h": 24}
 
 
@@ -65,6 +69,8 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
     pipeline = Pipeline(s, tools, llm, TTLCache(s.cache_ttl_s), AuditLog(s.audit_dir, audit_enabled))
     advice_writer = AdviceWriter(llm)
     reports = ReportStore(s.reports_store, s.reports_ttl_h, demo_reports(catalog) if s.reports_demo else None)
+    router = ValhallaClient(s.route_url, s.route_costing, http=http, timeout_s=s.route_timeout_s)
+    route_cache, route_limit = TTLCache(s.cache_ttl_s), PerMinute(s.route_per_minute)
     # Flood Watch Agent: reads citizen reports only in live mode (replay days are years old; today's reports
     # say nothing about them).
     watch = FloodWatch(pipeline, llm, WatchMemory(s.watch_memory_path),
@@ -169,6 +175,47 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
             return reports.add(rep, area.name, area.grid_id)
         except RateLimited:
             raise HTTPException(429, "Terlalu banyak laporan, coba lagi sebentar lagi.")
+
+    # ---- Alternative route ----------------------------------------------------------------------------------
+    @app.post("/api/v1/route")
+    def route(req: RouteRequest) -> dict:
+        """Fastest route vs the route that is least exposed to model-tier High areas and citizen flood reports."""
+        o, d = (req.origin.lat, req.origin.lon), (req.destination.lat, req.destination.lon)
+        gap = distance_m(o, d)
+        if gap < MIN_METERS or gap > MAX_KM * 1000:
+            raise HTTPException(422, f"origin and destination must be between {MIN_METERS:.0f} m and {MAX_KM:.0f} km apart")
+        target = resolve_date(req.time, req.date)
+        # Citizen flood reports count in live mode only, and never the demo examples (same rule as Flood Watch).
+        flood_pts = sorted((round(r["lat"], 5), round(r["lon"], 5)) for r in reports.active()
+                           if s.data_mode == "live" and not r.get("demo") and r["condition"] == "banjir")
+        key = ("route", target, round(o[0], 4), round(o[1], 4), round(d[0], 4), round(d[1], 4), tuple(flood_pts))
+        if (hit := route_cache.get(key)) is not None:
+            return hit
+        if not route_limit.allow():
+            raise HTTPException(429, "Terlalu banyak permintaan rute, coba lagi sebentar lagi.")
+        res = pipeline.run(target)
+        if res.status != "ok":
+            return unavailable(res)
+        risk = RiskMap(res.areas, flood_pts, Projector((o[0] + d[0]) / 2, (o[1] + d[1]) / 2))
+        try:
+            plan = plan_route(router, risk, o, d)
+        except NoRoute:
+            raise HTTPException(422, "Tidak ada rute jalan antara kedua titik.")
+        except RoutingError as exc:
+            log.warning("routing failed: %s", exc)
+            raise HTTPException(503, "Layanan routing tidak tersedia, coba lagi nanti.")
+
+        def view(r) -> dict:
+            return {"coordinates": [[round(la, 5), round(lo, 5)] for la, lo in r.coords], "km": round(r.km, 1),
+                    "minutes": round(r.minutes), "high_km": round(r.high_km, 1), "soft_km": round(r.soft_km, 1),
+                    "flood_points": r.flood_points, "streets": [n for n, _ in r.streets[:5] if n]}
+        out = {"target_date": target.isoformat(), "verdict": plan.verdict, "message": plan.message,
+               "recommended": view(plan.recommended), "fastest": view(plan.fastest),
+               "same_as_fastest": plan.recommended is plan.fastest, "origin_area": plan.origin_area,
+               "destination_area": plan.destination_area, "candidates": plan.candidates,
+               "flood_points_known": plan.flood_points_known, "profile": s.route_costing}
+        route_cache.set(key, out)
+        return out
 
     # ---- Flood Watch Agent ----------------------------------------------------------------------------------
     @app.get("/api/v1/warnings")

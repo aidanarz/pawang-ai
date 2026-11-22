@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   Droplets,
   Waves,
-  Compass,
   Car,
   ChevronRight,
   ChevronLeft,
@@ -23,6 +22,7 @@ import {
 import { AreaAnalysisResponse, GeoJSONGridFeature, TimeHorizon } from '@/data/types';
 import { getRiskBadgeClasses, getSiagaBadgeClasses, getColorForRainfall } from '@/utils/colorScale';
 import { HydrographChart } from './HydrographChart';
+import { RoutePlanner, type RoutePlannerProps } from './RoutePlanner';
 import { Disclosure } from './Disclosure';
 import { RainForecast } from './RainForecast';
 import { rainCategory } from '@/utils/rainCategory';
@@ -44,6 +44,8 @@ interface RightSidebarProps {
   onToggleSimulation: () => void;
   onSelectRegionById: (gridId: string) => void;
   onOpenSearchModal: () => void;
+  /** Alternative-route planner (state and actions live in MapDashboard, the map draws the route). */
+  planner: RoutePlannerProps;
 }
 
 type TabKey = 'ringkasan' | 'hujan' | 'saran';
@@ -144,6 +146,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   onToggleSimulation,
   onSelectRegionById,
   onOpenSearchModal,
+  planner,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -580,13 +583,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   <div className="space-y-5">
                     {/* Evacuation route */}
                     <section>
-                      <SectionTitle>Jalur alternatif / evakuasi</SectionTitle>
-                      <div className="flex items-start gap-3 rounded-2xl bg-[#F8F9FA] p-3.5 dark:bg-[#292A2D]">
-                        <Compass size={18} className="mt-0.5 shrink-0 text-[#1A73E8] dark:text-[#8AB4F8]" />
-                        <p className="text-[13px] leading-relaxed text-[#3C4043] dark:text-[#E8EAED]/90">
-                          {analysis.evacuation_route || 'Belum tersedia'}
-                        </p>
-                      </div>
+                      <SectionTitle>Jalur alternatif</SectionTitle>
+                      <RoutePlanner {...planner} />
                     </section>
 
                     {/* Affected roads */}

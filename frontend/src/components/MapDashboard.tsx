@@ -18,6 +18,7 @@ import { RightSidebar } from './RightSidebar';
 import { HeatmapLegend } from './HeatmapLegend';
 import { ReportModal, type ReportDraft } from './ReportModal';
 import { featureCenter, type LiveReport } from '@/data/reportConditions';
+import type { RouteResponse } from '@/data/types';
 import { dominantTier } from '@/utils/areaColors';
 import { MapControls } from './MapControls';
 import { SearchModal } from './SearchModal';
@@ -67,6 +68,12 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [reports, setReports] = useState<LiveReport[]>([]);
+  // Alternative route. The answer is tied to the day it was computed for, so a new day or horizon hides it.
+  const [routeRes, setRouteRes] = useState<{ data: RouteResponse; key: string } | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const [routeDest, setRouteDest] = useState<{ label: string; gridId?: string; position: [number, number] } | null>(null);
+  const [isRoutePicking, setIsRoutePicking] = useState(false);
   const [reportDraft, setReportDraft] = useState<ReportDraft | null>(null);
   const [isReportPicking, setIsReportPicking] = useState(false);
   const [reportPickingDraft, setReportPickingDraft] = useState<ReportDraft | null>(null);
@@ -303,6 +310,43 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
     }
   };
 
+  const routeKey = `${timeHorizon}|${archiveDate ?? ''}`;
+  const route = routeRes && routeRes.key === routeKey ? routeRes.data : null;
+  const originFeature = features.find((f) => f.properties.grid_id === selectedGridId);
+  const originPosition: [number, number] | null =
+    markerPosition ?? (originFeature ? featureCenter(originFeature) : null);
+
+  const runRoute = async () => {
+    if (!originPosition || !routeDest) return;
+    setRouteLoading(true);
+    setRouteError(null);
+    try {
+      const res = await fetch('/api/v1/route', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          origin: { lat: originPosition[0], lon: originPosition[1] },
+          destination: { lat: routeDest.position[0], lon: routeDest.position[1] },
+          time: timeHorizon,
+          ...(archiveDate ? { date: archiveDate } : {}),
+        }),
+      });
+      const body = await res.json().catch(() => null);
+      if (res.ok && body?.recommended) {
+        setRouteRes({ data: body as RouteResponse, key: routeKey });
+      } else {
+        setRouteRes(null);
+        const msg = typeof body?.detail === 'string' ? body.detail : body?.message;
+        setRouteError(typeof msg === 'string' ? msg : 'Rute tidak bisa dihitung.');
+      }
+    } catch {
+      setRouteRes(null);
+      setRouteError('Rute tidak bisa dihitung.');
+    } finally {
+      setRouteLoading(false);
+    }
+  };
+
   const highRiskCount = features.filter(
     (f) => f.properties.risk_level === 'High' || f.properties.risk_level === 'Extreme'
   ).length;
@@ -326,6 +370,12 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
           onSelectGrid={handleSelectGrid}
           reports={reports}
           isReportPicking={isReportPicking}
+          route={route}
+          isRoutePicking={isRoutePicking}
+          onPickRouteDestination={(position) => {
+            setIsRoutePicking(false);
+            setRouteDest({ label: `Titik di peta (${position[0].toFixed(4)}, ${position[1].toFixed(4)})`, position });
+          }}
           onPickReportLocation={(gridId, position) => {
             setIsReportPicking(false);
             setReportPickingDraft(null);
@@ -365,6 +415,15 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
         <Flag size={13} className="text-[#1A73E8] dark:text-[#8AB4F8]" />
         Lapor kondisi
       </button>
+
+      {isRoutePicking && (
+        <div className="absolute left-1/2 top-20 z-30 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-[#DADCE0] bg-white/95 px-3 py-2 text-xs text-[#202124] shadow-lg backdrop-blur-md dark:border-[#3C4043] dark:bg-[#202124]/95 dark:text-[#E8EAED]">
+          <span>Klik titik tujuan pada peta</span>
+          <button type="button" onClick={() => setIsRoutePicking(false)} className="rounded-md border border-current px-2 py-1 font-bold">
+            Batal
+          </button>
+        </div>
+      )}
 
       {isReportPicking && (
         <div className="absolute left-1/2 top-20 z-30 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-[#22396F] bg-[#FFEBCC]/95 px-3 py-2 text-xs text-[#010736] shadow-lg backdrop-blur-md dark:bg-[#0D1C42]/95 dark:text-[#FCF1D0]">
@@ -422,6 +481,26 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
         onToggleSimulation={() => setIsSimulating(!isSimulating)}
         onSelectRegionById={handleSelectGrid}
         onOpenSearchModal={() => setIsSearchOpen(true)}
+        planner={{
+          originName: originFeature?.properties.area_name ?? null,
+          features,
+          destination: routeDest ? { label: routeDest.label, gridId: routeDest.gridId } : null,
+          route,
+          loading: routeLoading,
+          error: routeError,
+          picking: isRoutePicking,
+          onChooseArea: (gridId) => {
+            const f = features.find((x) => x.properties.grid_id === gridId);
+            if (f) setRouteDest({ label: f.properties.area_name, gridId, position: featureCenter(f) });
+            setIsRoutePicking(false);
+          },
+          onPickOnMap: () => setIsRoutePicking(true),
+          onRun: runRoute,
+          onClear: () => {
+            setRouteRes(null);
+            setRouteError(null);
+          },
+        }}
       />
 
       {reportDraft && (
