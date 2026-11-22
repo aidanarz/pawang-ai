@@ -521,4 +521,4 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
       />
     </main>
   );
-};
+};
