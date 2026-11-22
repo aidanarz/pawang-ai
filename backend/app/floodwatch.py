@@ -48,6 +48,10 @@ MAX_MESSAGE_CHARS = 300
 FLOOD_CONDITIONS = ("banjir", "genangan_rendah")
 
 
+class WatchBusy(Exception):
+    """Another Flood Watch cycle is running."""
+
+
 @dataclass
 class Change:
     grid_id: str
@@ -188,12 +192,26 @@ class FloodWatch:
         self.pipeline, self.llm, self.memory = pipeline, llm, memory
         self.reports = reports or (lambda: [])
         self.cooldown_h, self.max_steps = cooldown_h, max_steps
+        self._cycle_lock = threading.Lock()
         # "medium_high": an active warning is lifted once the tier falls below medium_high;
         # "issued": once it falls below the tier the warning was issued for.
         self.lift_below = lift_below
 
     # -- one cycle --
-    def cycle(self, target_date: dt.date, now: dt.datetime | None = None) -> dict:
+    def cycle(self, target_date: dt.date, now: dt.datetime | None = None, wait: bool = True) -> dict:
+        """One cycle at a time: the scheduler and POST /watch/run share this agent, and two cycles at once could
+        publish the same warning twice or interleave memory writes. wait=False raises WatchBusy instead of queueing."""
+        if not self._cycle_lock.acquire(blocking=wait):
+            raise WatchBusy
+        try:
+            decision = self._cycle(target_date, now)
+        finally:
+            self._cycle_lock.release()
+        # Every cycle is audited, also the ones where nothing changed (they explain why no warning was sent).
+        self.pipeline.audit.write(decision["cycle_id"], {"step": "flood_watch", **decision})
+        return decision
+
+    def _cycle(self, target_date: dt.date, now: dt.datetime | None = None) -> dict:
         now = now or dt.datetime.now(WIB)
         cid = uuid.uuid4().hex[:12]
         decision: dict = {"cycle_id": cid, "target_date": target_date.isoformat(), "at": now.isoformat(),
@@ -266,7 +284,6 @@ class FloodWatch:
         self.memory.update(res.areas, now)
         decision["active"] = {g: v["level"] for g, v in self.memory.active().items()}
         self.memory.add_decision(decision)
-        self.pipeline.audit.write(cid, {"step": "flood_watch", **decision})
         return decision
 
     # -- LLM loop: ask for tools, run them, until a proposal (or the step limit) --

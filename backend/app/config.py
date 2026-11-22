@@ -94,6 +94,9 @@ class Settings:
     watch_memory_path: Path = field(default_factory=lambda: Path(
         os.environ.get("PAWANG_WATCH_MEMORY", str(BACKEND_DIR / "data" / "floodwatch_memory.json"))))
     watch_cooldown_h: float = field(default_factory=lambda: float(os.environ.get("PAWANG_WATCH_COOLDOWN_H", "6")))
+    # POST /watch/run and /watch/replay can each start several Qwen calls: limit them for everyone (no accounts yet)
+    watch_run_per_minute: int = field(default_factory=lambda: int(os.environ.get("PAWANG_WATCH_RUN_PER_MINUTE", "6")))
+    watch_replay_per_minute: int = field(default_factory=lambda: int(os.environ.get("PAWANG_WATCH_REPLAY_PER_MINUTE", "2")))
 
     # Audit log (one JSON line per request): the raw material for log audits and agent training
     audit_dir: Path = field(default_factory=lambda: Path(

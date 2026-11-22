@@ -383,6 +383,8 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     if (!layers.waterGates) return;
 
     waterGates.forEach((gate) => {
+      // Stations without coordinates stay in the sidebar list and hydrograph, but cannot be drawn on the map.
+      if (gate.lat == null || gate.lng == null) return;
       const isSiaga = gate.status === 'Siaga 1' || gate.status === 'Siaga 2';
       const markerColor = isSiaga ? '#EF4444' : gate.status === 'Siaga 3' ? '#F59E0B' : '#10B981';
 
@@ -416,11 +418,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: rgba(0,0,0,0.06); padding: 6px; border-radius: 6px; margin-bottom: 6px;">
             <div>
               <span style="font-size: 9.5px; color: #64748B;">Tinggi Air:</span>
-              <div style="font-weight: 700; font-size: 13px; color: ${markerColor};">${gate.currentLevelCm} cm</div>
+              <div style="font-weight: 700; font-size: 13px; color: ${markerColor};">${gate.currentLevelCm != null ? `${gate.currentLevelCm} cm` : '-'}</div>
             </div>
             <div>
               <span style="font-size: 9.5px; color: #64748B;">Status:</span>
-              <div style="font-weight: 700; font-size: 11px; color: ${markerColor};">${gate.status}</div>
+              <div style="font-weight: 700; font-size: 11px; color: ${markerColor};">${gate.status ?? 'Tidak ada data'}</div>
             </div>
           </div>
           <div style="font-size: 9.5px; color: #94A3B8; text-align: right;">

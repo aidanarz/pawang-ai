@@ -86,7 +86,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
   // Archive day for replay mode. Null in live mode (the backend derives the day from the time horizon).
   const [archiveDate, setArchiveDate] = useState<string | null>(null);
 
-  const [layers, setLayers] = useState({
+  const [layers] = useState({
     heatmap: true,
     waterGates: true,
     evacuation: true,
@@ -521,4 +521,4 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
       />
     </main>
   );
-};
+};

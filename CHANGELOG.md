@@ -2,6 +2,17 @@
 
 Every change (also the ones made with an AI assistant): what, which files, why. Newest first.
 
+## 2026-11-22 · Pre-deploy fixes (Coki, branch `fix/pre-deploy-2026-11-22` = `feature/alt-route` + `alt-branch`)
+- **Frontend error from "Fixing hydrochart #2" fixed:** stations without coordinates were passed to the map
+  (`tsc` error, Leaflet cannot draw a marker without lat/lng). The map now skips them; the list and hydrograph keep
+  them. `LeafletMap.tsx`, test updated in `lib/backend.test.ts`; unused `setLayers` removed in `MapDashboard.tsx`.
+- **Flood Watch review findings (Aidan, 22 Nov) 1-4 fixed** in `floodwatch.py`, `main.py`, `config.py`:
+  one cycle at a time (lock; `POST /watch/run` answers 409 while another cycle runs), rate limits on
+  `/watch/run` (6/min) and `/watch/replay` (2/min), every cycle audited (also "nothing changed"), memory file per
+  data mode (`floodwatch_memory_live.json` / `_replay.json`), so replay demo warnings never reach the live feed.
+  +4 tests (`tests/test_floodwatch.py`).
+- **Next.js 16.4.3 -> 16.4.6** (security advisory Nov 2026): `frontend/package.json`, `package-lock.json`.
+
 ## 2026-11-22 · Alternative route (branch `feature/alt-route`, built on `feature/flood-watch`)
 - **Engine check:** public Valhalla (`valhalla1.openstreetmap.de`) works from Jakarta with profile `motor_scooter`
   (motorcycle), returns up to 2 alternatives, and `exclude_locations` (max 50 points) really moves a route out of a
