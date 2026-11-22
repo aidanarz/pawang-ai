@@ -97,8 +97,16 @@ export function normalizeAnalysis(a: AreaAnalysisResponse): AreaAnalysisResponse
     affected_roads: (r.affected_roads as string[] | null) ?? [],
     hydrograph: hydrograph.length >= 2 ? hydrograph : [],
     rain_daily: (a.hydrograph ?? []).map((h) => ({ time: h.time, rainfall: h.rainfall })),
-    // Backend stations carry no coordinates or siaga thresholds yet; the map needs lat/lng.
-    nearby_stations: (a.nearby_stations ?? []).filter((s) => s.lat != null && s.lng != null),
+    nearby_stations: (a.nearby_stations ?? [])
+      .filter((s) => s.name != null)
+      .map((s) => ({
+        ...s,
+        name: str(s.name).trim().toLowerCase() === 'p a hek'
+          ? 'P A Hek Kramat Jati'
+          : str(s.name),
+        river: str(s.river),
+        status: s.status ?? null,
+      })),
     safe_shelters: a.safe_shelters ?? [],
   };
 }

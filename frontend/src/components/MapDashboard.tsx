@@ -270,14 +270,6 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
     return () => clearInterval(interval);
   }, [isSimulating]);
 
-  // Layer toggle handler
-  const handleToggleLayer = (layerKey: keyof typeof layers) => {
-    setLayers((prev) => ({
-      ...prev,
-      [layerKey]: !prev[layerKey],
-    }));
-  };
-
   // Zoom controls triggering Leaflet via custom events
   const handleZoomIn = () => {
     window.dispatchEvent(new CustomEvent('pawang:zoomin'));
@@ -450,9 +442,6 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
           onResetView={handleResetView}
           basemap={basemap}
           onChangeBasemap={(b) => setBasemap(b)}
-          layers={layers}
-          onToggleLayer={handleToggleLayer}
-          hasRealData={hasRealData}
         />
       </div>
 

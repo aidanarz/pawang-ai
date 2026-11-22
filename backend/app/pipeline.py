@@ -56,6 +56,7 @@ class PipelineResult:
     rain: pd.DataFrame | None = None
     water_level: pd.DataFrame | None = None
     water_level_hourly: pd.DataFrame | None = None
+    station_status: dict[str, str] = field(default_factory=dict)
     verdicts: dict[str, Verdict] = field(default_factory=dict)
     message: str = ""
     cached: bool = False
@@ -178,6 +179,7 @@ class Pipeline:
         out = P.predict(fp, kf, mode="auto" if tma is not None else "rainfall_only")
         units = P.unit_inputs(kf, fp).set_index("cell_id")
         siaga = results["get_water_level"].extra.get("siaga", {}) if tma is not None else {}
+        res.station_status = {str(k): str(v) for k, v in siaga.items()}
         latest_levels = results["get_water_level"].extra.get("latest", {}) if tma is not None else {}
         hourly = results["get_water_level"].extra.get("hourly") if tma is not None else None
         res.rain, res.water_level = rain, tma

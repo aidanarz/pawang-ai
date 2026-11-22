@@ -20,6 +20,22 @@ RISK_TO_FRONTEND = {"low": "Low", "medium": "Medium", "medium_high": "Medium-Hig
 BADGE = {"HIGH": "Data lengkap", "LOW": "Data terbatas"}
 HALF_CELL_DEG = 0.012   # ~1.3 km half-width
 
+STATION_META = {
+    "ps katulampa hulu": ("Bendung Katulampa", -6.6331, 106.8369),
+    "pos depok": ("Pos Depok", -6.4006, 106.8322),
+    "pa manggarai": ("Manggarai BKB", -6.2078, 106.8475),
+    "p a karet": ("PA. Karet", -6.1978, 106.8175),
+    "ps krukut hulu": ("Pos Krukut Hulu", -6.3292, 106.7981),
+    "ps pesanggrahan": ("Pos Pesanggrahan", -6.2653, 106.7667),
+    "ps angke hulu": ("Pos Angke Hulu", -6.1742, 106.7381),
+    "p a hek": ("P A Hek Kramat Jati", -6.287305, 106.87063),
+    "p a pluit": ("Waduk Pluit", -6.1139, 106.7933),
+    "pasar ikan laut": ("Pasar Ikan - Laut", -6.125122, 106.802086),
+    "ps cipinang hulu": ("Pos Cipinang Hulu", -6.2844, 106.8764),
+    "ps sunter hulu": ("Pos Sunter Hulu", -6.2897, 106.9061),
+    "pa pulo gadung": ("Pulo Gadung", -6.1909, 106.9043),
+}
+
 
 def _square(lat: float, lon: float) -> list[list[list[float]]]:
     h = HALF_CELL_DEG
@@ -127,9 +143,20 @@ def analysis_response(r: PipelineResult, a: AreaResult, advice: dict) -> dict:
         w = r.water_level[r.water_level["station_id"].isin(a.area.station_ids)].sort_values("date")
         for sid, g in w.groupby("station_id"):
             last = g.iloc[-1]
-            stations.append({"id": sid, "name": sid.title(), "currentLevelCm": round(float(last["tma_max"])),
-                             "updatedAt": last["date"].date().isoformat(), "status": None,
-                             "siaga3Cm": None, "siaga2Cm": None, "siaga1Cm": None})
+            meta = STATION_META.get(sid)
+            stations.append({
+                "id": sid,
+                "name": meta[0] if meta else sid.title(),
+                "currentLevelCm": round(float(last["tma_max"])),
+                "updatedAt": last["date"].date().isoformat(),
+                "status": r.station_status.get(sid),
+                "siaga3Cm": None,
+                "siaga2Cm": None,
+                "siaga1Cm": None,
+                "lat": meta[1] if meta else None,
+                "lng": meta[2] if meta else None,
+                "river": meta[0] if meta else None,
+            })
     return {
         **{k: p[k] for k in ("grid_id", "area_name", "district", "city", "risk_level", "flood_probability",
                              "duration_est", "confidence", "confidence_badge", "confidence_score",

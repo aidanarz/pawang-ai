@@ -197,6 +197,14 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
     : 'Model menilai peluang banjir di daerah ini rendah. Ini perkiraan, bukan jaminan aman.';
 
   const isLimitedData = analysis ? /terbatas|limited|low/i.test(analysis.confidence_badge) : false;
+  const nearbyStations = (analysis?.nearby_stations ?? [])
+    .filter((station) => station.name?.trim())
+    .map((station) => ({
+      ...station,
+      name: station.name.trim().toLowerCase() === 'p a hek'
+        ? 'P A Hek Kramat Jati'
+        : station.name,
+    }));
 
   return (
     <>
@@ -473,7 +481,9 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                       </Row>
                       <Row
                         icon={<Waves size={16} />}
-                        label="Tinggi muka air sungai (per jam)"
+                        label={nearbyStations.length > 0
+                          ? `Tinggi muka air sungai (per jam) ${nearbyStations[0].name}`
+                          : 'Tinggi muka air sungai (per jam)'}
                         title="Tinggi air di pos pemantau sungai/pintu air terdekat (TMA) per jam"
                       >
                         {analysis.water_level_cm != null ? (
@@ -485,13 +495,17 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                           <span className="text-[#5F6368] dark:text-[#9AA0A6]">Belum tersedia</span>
                         )}
                         <span className={`ml-2 text-[11px] font-semibold ${siagaClasses.text}`}>
-                          {isNoRisk ? 'Aman' : analysis.siaga_level}
+                          {isNoRisk
+                            ? 'Normal'
+                            : nearbyStations[0]?.status ?? analysis.siaga_level}
                         </span>
                       </Row>
                     </div>
 
                     <div>
-                      <SectionTitle>Grafik muka air per jam</SectionTitle>
+                      <SectionTitle>
+                        {nearbyStations[0]?.name ? `  ${nearbyStations[0].name}` : ''}
+                      </SectionTitle>
                       <HydrographChart
                         data={analysis.hydrograph}
                         currentLevel={analysis.water_level_cm}

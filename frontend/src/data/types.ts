@@ -28,15 +28,15 @@ export interface WaterGateStation {
   id: string;
   name: string;
   river: string;
-  currentLevelCm: number;
-  normalLevelCm: number;
-  siaga3Cm: number;
-  siaga2Cm: number;
-  siaga1Cm: number;
-  status: SiagaLevel;
-  trend: 'rising' | 'stable' | 'falling';
-  lat: number;
-  lng: number;
+  currentLevelCm: number | null;
+  normalLevelCm: number | null;
+  siaga3Cm: number | null;
+  siaga2Cm: number | null;
+  siaga1Cm: number | null;
+  status: SiagaLevel | null;
+  trend: 'rising' | 'stable' | 'falling' | null;
+  lat: number | null;
+  lng: number | null;
   updatedAt: string;
 }
 
