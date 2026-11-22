@@ -5,13 +5,9 @@ import {
   Plus,
   Minus,
   Crosshair,
-  Layers,
   Map as MapIcon,
   Maximize2,
   Minimize2,
-  Droplets,
-  ShieldAlert,
-  Radio,
 } from 'lucide-react';
 import { BasemapType } from '@/data/types';
 
@@ -21,15 +17,6 @@ interface MapControlsProps {
   onResetView: () => void;
   basemap: BasemapType;
   onChangeBasemap: (basemap: BasemapType) => void;
-  layers: {
-    heatmap: boolean;
-    waterGates: boolean;
-    evacuation: boolean;
-    radarPulse: boolean;
-  };
-  onToggleLayer: (layer: keyof MapControlsProps['layers']) => void;
-  /** True when the map shows real backend data. Layers that only exist as demo data are then switched off. */
-  hasRealData: boolean;
 }
 
 export const MapControls: React.FC<MapControlsProps> = ({
@@ -38,12 +25,8 @@ export const MapControls: React.FC<MapControlsProps> = ({
   onResetView,
   basemap,
   onChangeBasemap,
-  layers,
-  onToggleLayer,
-  hasRealData,
 }) => {
   const [showBasemapMenu, setShowBasemapMenu] = useState(false);
-  const [showLayersMenu, setShowLayersMenu] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const toggleFullscreen = () => {
@@ -88,27 +71,10 @@ export const MapControls: React.FC<MapControlsProps> = ({
       {/* Basemap and Layers Switcher Widget */}
       <div className="relative">
         <div className="flex flex-col gap-1 rounded-2xl border border-[#DADCE0] bg-white/95 p-1 shadow-md backdrop-blur-md dark:border-[#3C4043] dark:bg-[#202124]/95">
-          {/* Layer toggles button */}
-          <button
-            onClick={() => {
-              setShowLayersMenu(!showLayersMenu);
-              setShowBasemapMenu(false);
-            }}
-            className={`flex items-center justify-center rounded-xl p-2 transition ${
-              showLayersMenu
-                ? 'bg-[#E8F0FE] text-[#1A73E8] dark:bg-[#1A73E8]/20 dark:text-[#8AB4F8]'
-                : 'text-[#5F6368] hover:bg-[#F1F3F4] hover:text-[#202124] dark:text-[#9AA0A6] dark:hover:bg-[#292A2D] dark:hover:text-[#E8EAED]'
-            }`}
-            title="Pengaturan Layer"
-          >
-            <Layers size={18} />
-          </button>
-
           {/* Basemap style button */}
           <button
             onClick={() => {
               setShowBasemapMenu(!showBasemapMenu);
-              setShowLayersMenu(false);
             }}
             className={`flex items-center justify-center rounded-xl p-2 transition ${
               showBasemapMenu
@@ -129,73 +95,6 @@ export const MapControls: React.FC<MapControlsProps> = ({
             {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
           </button>
         </div>
-
-        {/* Layers Flyout Menu */}
-        {showLayersMenu && (
-          <div className="absolute bottom-0 left-full z-50 ml-2 w-60 animate-in fade-in zoom-in-95 duration-150 rounded-2xl border border-[#DADCE0] bg-white p-3 text-[#202124] shadow-xl dark:border-[#3C4043] dark:bg-[#202124] dark:text-[#E8EAED]">
-            {hasRealData && (
-              <div className="mb-2 rounded-xl bg-[#FEF7E0] p-2 text-[10px] leading-relaxed text-[#7A4F01] dark:bg-[#F9AB00]/10 dark:text-[#FDD663]">
-                Pintu air, posko, dan radar dimatikan: belum ada sumber data nyata untuk layer ini.
-              </div>
-            )}
-            <div className="space-y-1">
-              <label className="flex cursor-pointer items-center justify-between rounded-xl p-2 text-xs transition hover:bg-[#F1F3F4] dark:hover:bg-[#292A2D]">
-                <span className="flex items-center gap-2 font-medium">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#1A73E8] dark:bg-[#8AB4F8]" />
-                  Grid Heatmap Banjir
-                </span>
-                <input
-                  type="checkbox"
-                  checked={layers.heatmap}
-                  onChange={() => onToggleLayer('heatmap')}
-                  className="rounded accent-[#1A73E8] dark:accent-[#8AB4F8]"
-                />
-              </label>
-
-              <label className="flex cursor-pointer items-center justify-between rounded-xl p-2 text-xs transition hover:bg-[#F1F3F4] dark:hover:bg-[#292A2D]">
-                <span className="flex items-center gap-2 font-medium">
-                  <Droplets size={13} className="text-[#1A73E8] dark:text-[#8AB4F8]" />
-                  Pos Pantau / Pintu Air
-                </span>
-                <input
-                  type="checkbox"
-                  checked={layers.waterGates && !hasRealData}
-                  disabled={hasRealData}
-                  onChange={() => onToggleLayer('waterGates')}
-                  className="rounded accent-[#1A73E8] dark:accent-[#8AB4F8]"
-                />
-              </label>
-
-              <label className="flex cursor-pointer items-center justify-between rounded-xl p-2 text-xs transition hover:bg-[#F1F3F4] dark:hover:bg-[#292A2D]">
-                <span className="flex items-center gap-2 font-medium">
-                  <ShieldAlert size={13} className="text-[#1A73E8] dark:text-[#8AB4F8]" />
-                  Posko Pengungsian
-                </span>
-                <input
-                  type="checkbox"
-                  checked={layers.evacuation && !hasRealData}
-                  disabled={hasRealData}
-                  onChange={() => onToggleLayer('evacuation')}
-                  className="rounded accent-[#1A73E8] dark:accent-[#8AB4F8]"
-                />
-              </label>
-
-              <label className="flex cursor-pointer items-center justify-between rounded-xl p-2 text-xs transition hover:bg-[#F1F3F4] dark:hover:bg-[#292A2D]">
-                <span className="flex items-center gap-2 font-medium">
-                  <Radio size={13} className="text-[#1A73E8] dark:text-[#8AB4F8]" />
-                  Radar Reflektivitas
-                </span>
-                <input
-                  type="checkbox"
-                  checked={layers.radarPulse && !hasRealData}
-                  disabled={hasRealData}
-                  onChange={() => onToggleLayer('radarPulse')}
-                  className="rounded accent-[#1A73E8] dark:accent-[#8AB4F8]"
-                />
-              </label>
-            </div>
-          </div>
-        )}
 
         {/* Basemap Selection Flyout */}
         {showBasemapMenu && (

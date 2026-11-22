@@ -15,7 +15,11 @@ export const HydrographChart: React.FC<HydrographChartProps> = ({ data, currentL
 
     const labels = ['12 jam lalu', '10', '8', '6', '4', 'Live'];
     const isHourlyLabels = labels.includes(data[0].time);
-    if (isHourlyLabels) return data.slice(-6);
+    if (isHourlyLabels) {
+      return data.slice(-6).map((point, index, points) =>
+        index === points.length - 1 ? { ...point, time: 'Live' } : point
+      );
+    }
 
     const usable = data.filter((point) => point.waterLevel != null);
     const latest = currentLevel ?? usable.at(-1)?.waterLevel ?? usable[0]?.waterLevel;

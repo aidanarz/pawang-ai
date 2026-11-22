@@ -113,6 +113,21 @@ export const WATER_GATE_STATIONS: WaterGateStation[] = [
     lng: 106.8992,
     updatedAt: '20 Menit yang lalu',
   },
+  {
+    id: 'GAUGE-HEK',
+    name: 'P A Hek Kramat Jati',
+    river: 'Kali Ciliwung',
+    currentLevelCm: 145,
+    normalLevelCm: 90,
+    siaga3Cm: 140,
+    siaga2Cm: 200,
+    siaga1Cm: 250,
+    status: 'Normal',
+    trend: 'stable',
+    lat: -6.287305,
+    lng: 106.87063,
+    updatedAt: '20 Menit yang lalu',
+  },
 ];
 
 export const EVACUATION_CENTERS: EvacuationCenter[] = [
