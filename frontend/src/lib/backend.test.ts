@@ -51,9 +51,10 @@ describe('normalizeAnalysis', () => {
     expect(normalizeAnalysis(one).hydrograph).toEqual([]);
   });
 
-  it('drops stations without coordinates and fills text fields', () => {
+  it('keeps stations without coordinates (the map skips them) and fills text fields', () => {
     const out = normalizeAnalysis(base);
-    expect(out.nearby_stations).toEqual([]);
+    expect(out.nearby_stations).toHaveLength(1);
+    expect(out.nearby_stations[0]).toMatchObject({ id: 'a', name: 'A', river: NA, status: null });
     expect(out.recommendation).toBe(NA);
   });
 });

@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.areas import get_catalog
 from app.config import Settings
-from app.floodwatch import FloodWatch, WatchMemory, level_cap, report_cap
+from app.floodwatch import FloodWatch, WatchBusy, WatchMemory, level_cap, report_cap
 from app.llm import LLMCall, NoLLM
 from app.main import create_app
 from app.pipeline import AreaResult, PipelineResult
@@ -41,8 +41,11 @@ class SeqLLM:
 
 
 class _Audit:
-    def write(self, *_):
-        pass
+    def __init__(self):
+        self.rows = []
+
+    def write(self, request_id, row):
+        self.rows.append(row)
 
 
 class StubPipeline:
@@ -215,3 +218,39 @@ def test_watch_replay_needs_replay_mode(live_settings, tmp_path):
     s = Settings(**{**live_settings.__dict__, "watch_memory_path": tmp_path / "watch.json"})
     r = TestClient(create_app(s)).post("/api/v1/watch/replay", params={"start": "2020-02-20", "end": "2020-02-21"})
     assert r.status_code == 422
+
+
+# ---- review fixes (2026-11-22): lock, audit, per-mode memory, rate limits ---------------------------------------
+def test_second_cycle_at_the_same_time_is_refused_not_doubled():
+    w = watch(StubPipeline({"cakung": "high"}))
+    w._cycle_lock.acquire()                    # a cycle is running (e.g. the scheduler)
+    try:
+        with pytest.raises(WatchBusy):
+            w.cycle(DAY, NOW, wait=False)
+    finally:
+        w._cycle_lock.release()
+    assert len(w.cycle(DAY, NOW)["published"]) == 1
+
+
+def test_every_cycle_is_audited_also_without_changes():
+    pipe = StubPipeline({})
+    watch(pipe).cycle(DAY, NOW)
+    assert pipe.audit.rows and pipe.audit.rows[-1]["triggered"] is False
+
+
+def test_memory_file_is_separate_per_data_mode(replay_settings, tmp_path):
+    s = Settings(**{**replay_settings.__dict__, "watch_memory_path": tmp_path / "watch.json"})
+    c = TestClient(create_app(s))
+    c.post("/api/v1/watch/run", params={"date": FLOOD_DAY.isoformat()})
+    assert (tmp_path / "watch_replay.json").exists() and not (tmp_path / "watch.json").exists()
+
+
+def test_watch_endpoints_are_rate_limited(replay_settings, tmp_path):
+    s = Settings(**{**replay_settings.__dict__, "watch_memory_path": tmp_path / "watch.json",
+                    "watch_run_per_minute": 1, "watch_replay_per_minute": 1})
+    c = TestClient(create_app(s))
+    assert c.post("/api/v1/watch/run", params={"date": FLOOD_DAY.isoformat()}).status_code == 200
+    assert c.post("/api/v1/watch/run", params={"date": FLOOD_DAY.isoformat()}).status_code == 429
+    rng = {"start": "2020-02-24", "end": "2020-02-25"}
+    assert c.post("/api/v1/watch/replay", params=rng).status_code == 200
+    assert c.post("/api/v1/watch/replay", params=rng).status_code == 429

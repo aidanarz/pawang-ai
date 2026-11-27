@@ -24,7 +24,7 @@ from .areas import get_catalog
 from .audit import AuditLog
 from .cache import TTLCache
 from .config import Settings, get_settings
-from .floodwatch import FloodWatch, WatchMemory, WatchScheduler
+from .floodwatch import FloodWatch, WatchBusy, WatchMemory, WatchScheduler
 from .llm import LLM, NoLLM, QwenClient
 from .pipeline import Pipeline
 from .predictor import get_predictor
@@ -74,7 +74,11 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
     route_cache, route_limit = TTLCache(s.cache_ttl_s), PerMinute(s.route_per_minute)
     # Flood Watch Agent: reads citizen reports only in live mode (replay days are years old; today's reports
     # say nothing about them).
-    watch = FloodWatch(pipeline, llm, WatchMemory(s.watch_memory_path),
+    # One memory file per data mode, so warnings from a replay demo never show up in the live feed.
+    watch_mem_path = s.watch_memory_path.with_name(
+        f"{s.watch_memory_path.stem}_{s.data_mode}{s.watch_memory_path.suffix}")
+    watch_run_limit, watch_replay_limit = PerMinute(s.watch_run_per_minute), PerMinute(s.watch_replay_per_minute)
+    watch = FloodWatch(pipeline, llm, WatchMemory(watch_mem_path),
                        reports=(lambda: [r for r in reports.active() if not r.get("demo")]) if s.data_mode == "live"
                        else None, cooldown_h=s.watch_cooldown_h)
     scheduler = WatchScheduler(watch, s.watch_interval_s if s.data_mode == "live" else 0)
@@ -240,7 +244,12 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
         Replay mode needs ?date=YYYY-MM-DD; the cycle then acts as if it were that morning."""
         target = resolve_date(time, date)
         now = (dt.datetime.combine(target, dt.time(6, 0), tzinfo=WIB) if s.data_mode == "replay" else None)
-        return watch.cycle(target, now=now)
+        if not watch_run_limit.allow():
+            raise HTTPException(429, "Terlalu banyak permintaan siklus Flood Watch, coba lagi sebentar lagi.")
+        try:
+            return watch.cycle(target, now=now, wait=False)
+        except WatchBusy:
+            raise HTTPException(409, "Siklus Flood Watch lain sedang berjalan, coba lagi sebentar lagi.")
 
     @app.post("/api/v1/watch/replay")
     def watch_replay(start: str, end: str) -> dict:
@@ -251,6 +260,8 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
         d0, d1 = resolve_date("1h", start), resolve_date("1h", end)
         if d1 < d0 or (d1 - d0).days > 61:
             raise HTTPException(422, "end must be on or after start, at most 62 days")
+        if not watch_replay_limit.allow():
+            raise HTTPException(429, "Terlalu banyak permintaan replay, coba lagi sebentar lagi.")
         replay = FloodWatch(pipeline, llm, WatchMemory(None), cooldown_h=s.watch_cooldown_h)
         days = []
         d = d0
