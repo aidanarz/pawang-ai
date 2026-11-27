@@ -2,6 +2,15 @@
 
 Every change (also the ones made with an AI assistant): what, which files, why. Newest first.
 
+## 2026-11-28 · Route tab: searchable "Dari" and avoided-risk summary
+- `components/AreaPickerInput.tsx` (new): search box + list of the kecamatan on the map (dark mode stays dark when
+  focused). `RoutePlanner.tsx`: "Dari" is now this box, so the route can start anywhere, not only at the selected area;
+  "Pakai daerah terpilih di peta" goes back. `MapDashboard.tsx`: `routeOrigin` state; a new selection on the map resets
+  it, and picking a start hides the route drawn for the old one.
+- The result card now says how much risk the recommended route avoids compared with the fastest one: high-risk km
+  ("1.0 km (1.0 → 0.0 km)"), citizen flood points, and the detour ("+3.4 km, +12 menit"). `utils/routeStyle.ts`
+  (`riskAvoided`, + tests). These numbers are built by rules; the LLM-worded text stays number-free on purpose.
+
 ## 2026-11-28 · Frontend: legend, dark search bar, sidebar tabs
 - `components/HeatmapLegend.tsx`: the risk legend (bottom left) can be minimised to a small "Legenda" pill and opened again.
 - `components/RightSidebar.tsx`: the search bar turned white when focused in dark mode (`focus:bg-white` had no dark

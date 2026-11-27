@@ -78,6 +78,8 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [routeDest, setRouteDest] = useState<{ label: string; gridId?: string; position: [number, number] } | null>(null);
+  // Start picked in the "Dari" box. Without it the route starts at the selected area / the spot last clicked.
+  const [routeOrigin, setRouteOrigin] = useState<{ label: string; gridId: string; position: [number, number] } | null>(null);
   const [isRoutePicking, setIsRoutePicking] = useState(false);
   const [reportDraft, setReportDraft] = useState<ReportDraft | null>(null);
   const [isReportPicking, setIsReportPicking] = useState(false);
@@ -318,6 +320,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
 
   const handleSelectGrid = (gridId: string, position?: [number, number]) => {
     setSelectedGridId(gridId);
+    setRouteOrigin(null); // a new selection on the map is a new start
     if (position) {
       setMarkerPosition(position);
       return;
@@ -339,7 +342,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
   const route = routeRes && routeRes.key === routeKey ? routeRes.data : null;
   const originFeature = features.find((f) => f.properties.grid_id === selectedGridId);
   const originPosition: [number, number] | null =
-    markerPosition ?? (originFeature ? featureCenter(originFeature) : null);
+    routeOrigin?.position ?? markerPosition ?? (originFeature ? featureCenter(originFeature) : null);
 
   const runRoute = async () => {
     if (!originPosition || !routeDest) return;
@@ -547,7 +550,20 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
         onOpenSearchModal={() => setIsSearchOpen(true)}
         areaWarning={warningsData?.active.find((w) => w.grid_id === selectedGridId) ?? null}
         planner={{
-          originName: originFeature?.properties.area_name ?? null,
+          originName: routeOrigin?.label ?? originFeature?.properties.area_name ?? null,
+          originIsPicked: routeOrigin !== null,
+          onChooseOrigin: (gridId) => {
+            const f = features.find((x) => x.properties.grid_id === gridId);
+            if (!f) return;
+            setRouteOrigin({ label: f.properties.area_name, gridId, position: featureCenter(f) });
+            setRouteRes(null); // the route on the map was for another start
+            setRouteError(null);
+          },
+          onResetOrigin: () => {
+            setRouteOrigin(null);
+            setRouteRes(null);
+            setRouteError(null);
+          },
           features,
           destination: routeDest ? { label: routeDest.label, gridId: routeDest.gridId } : null,
           route,

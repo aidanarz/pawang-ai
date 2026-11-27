@@ -3,11 +3,16 @@
 import React from 'react';
 import { Compass, MapPin, Route as RouteIcon, X } from 'lucide-react';
 import type { GeoJSONGridFeature, RouteResponse } from '@/data/types';
-import { FASTEST_ROUTE_COLOR, ROUTE_VERDICTS, detourText } from '@/utils/routeStyle';
+import { FASTEST_ROUTE_COLOR, ROUTE_VERDICTS, detourText, riskAvoided } from '@/utils/routeStyle';
+import { AreaPickerInput } from './AreaPickerInput';
 
 export interface RoutePlannerProps {
-  /** The selected area: where the route starts (or the spot last clicked on the map). */
+  /** Where the route starts: the area picked in the "Dari" box, else the selected area on the map. */
   originName: string | null;
+  /** True when the user picked the start in the "Dari" box (not just the selected area). */
+  originIsPicked: boolean;
+  onChooseOrigin: (gridId: string) => void;
+  onResetOrigin: () => void;
   features: GeoJSONGridFeature[];
   destination: { label: string; gridId?: string } | null;
   route: RouteResponse | null;
@@ -27,6 +32,9 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({
   originName,
   features,
   destination,
+  originIsPicked,
+  onChooseOrigin,
+  onResetOrigin,
   route,
   loading,
   error,
@@ -38,6 +46,7 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({
 }) => {
   const areas = [...features].sort((a, b) => a.properties.area_name.localeCompare(b.properties.area_name));
   const verdict = route ? ROUTE_VERDICTS[route.verdict] : null;
+  const avoided = route ? riskAvoided(route.fastest, route.recommended) : { highKm: 0, floodPoints: 0 };
 
   return (
     <div className="space-y-3 rounded-2xl bg-[#F8F9FA] p-3.5 dark:bg-[#292A2D]">
@@ -47,11 +56,28 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({
       </div>
 
       <div className="space-y-1">
-        <div className="text-[11px] font-medium text-[#5F6368] dark:text-[#9AA0A6]">Dari</div>
-        <div className="flex items-center gap-2 rounded-xl border border-[#DADCE0] px-3 py-2 text-[13px] text-[#202124] dark:border-[#3C4043] dark:text-[#E8EAED]">
-          <MapPin size={14} className="shrink-0 text-[#34A853]" />
-          {originName ?? 'Pilih daerah di peta atau kotak pencarian'}
+        <div className="flex items-center justify-between">
+          <label htmlFor="route-origin" className="text-[11px] font-medium text-[#5F6368] dark:text-[#9AA0A6]">
+            Dari
+          </label>
+          {originIsPicked && (
+            <button
+              type="button"
+              onClick={onResetOrigin}
+              className="text-[11px] font-semibold text-[#1A73E8] hover:underline dark:text-[#8AB4F8]"
+            >
+              Pakai daerah terpilih di peta
+            </button>
+          )}
         </div>
+        <AreaPickerInput
+          id="route-origin"
+          features={features}
+          valueLabel={originName}
+          placeholder="Cari daerah asal..."
+          icon={<MapPin size={14} className="text-[#34A853]" />}
+          onChoose={onChooseOrigin}
+        />
       </div>
 
       <div className="space-y-1">
@@ -141,10 +167,25 @@ export const RoutePlanner: React.FC<RoutePlannerProps> = ({
               <div className="text-[#5F6368] dark:text-[#9AA0A6]">{route.fastest.high_km} km area berisiko tinggi</div>
             </div>
           </div>
-          <div className="text-[11px] text-[#5F6368] dark:text-[#9AA0A6]">
-            {detourText(route.fastest, route.recommended)}
-            {route.flood_points_known > 0 && ` · ${route.flood_points_known} titik banjir laporan warga dihitung`}
-          </div>
+          <ul className="space-y-0.5 text-[12px] text-[#3C4043] dark:text-[#E8EAED]/90">
+            {avoided.highKm > 0 && (
+              <li>
+                Area berisiko tinggi dihindari: <b>{avoided.highKm.toFixed(1)} km</b> ({route.fastest.high_km.toFixed(1)} →{' '}
+                {route.recommended.high_km.toFixed(1)} km)
+              </li>
+            )}
+            {avoided.floodPoints > 0 && (
+              <li>
+                Titik banjir laporan warga dihindari: <b>{avoided.floodPoints}</b>
+              </li>
+            )}
+            <li>Dibanding rute tercepat: {detourText(route.fastest, route.recommended)}</li>
+          </ul>
+          {route.flood_points_known > 0 && (
+            <div className="text-[11px] text-[#5F6368] dark:text-[#9AA0A6]">
+              {route.flood_points_known} titik banjir laporan warga ikut dihitung
+            </div>
+          )}
         </div>
       )}
 

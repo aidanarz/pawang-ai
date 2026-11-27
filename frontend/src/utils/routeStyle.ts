@@ -11,6 +11,17 @@ export const ROUTE_VERDICTS: Record<RouteVerdict, { label: string; color: string
 
 export const FASTEST_ROUTE_COLOR = '#5F6368';
 
+/** What the recommended route avoids compared with the fastest one (never negative). */
+export function riskAvoided(
+  fastest: { high_km: number; flood_points: number },
+  rec: { high_km: number; flood_points: number }
+): { highKm: number; floodPoints: number } {
+  return {
+    highKm: Math.max(0, Math.round((fastest.high_km - rec.high_km) * 10) / 10),
+    floodPoints: Math.max(0, fastest.flood_points - rec.flood_points),
+  };
+}
+
 /** "+3.4 km, +12 menit" for a detour, "sama dengan rute tercepat" when it is the same road. */
 export function detourText(fastest: { km: number; minutes: number }, rec: { km: number; minutes: number }): string {
   const dk = Math.round((rec.km - fastest.km) * 10) / 10;
