@@ -2,6 +2,12 @@
 
 Every change (also the ones made with an AI assistant): what, which files, why. Newest first.
 
+## 2026-11-28 · Frontend: legend, dark search bar, sidebar tabs
+- `components/HeatmapLegend.tsx`: the risk legend (bottom left) can be minimised to a small "Legenda" pill and opened again.
+- `components/RightSidebar.tsx`: the search bar turned white when focused in dark mode (`focus:bg-white` had no dark
+  counterpart); it now stays dark. The Ringkasan / Hujan / Saran tabs moved to the top of the panel (under the search
+  and horizon bar); the area header and the tab content scroll together beneath them.
+
 ## 2026-11-27 · Pemilihan mode Live/Histori
 - **Map mode switch:** `MapDashboard.tsx`, `DataSourceBanner.tsx`, `TopStatusPill.tsx`, `data/types.ts`,
   `utils/predictionMode.ts` and tests. The default is Live; Histori exposes a date picker bounded by the archive

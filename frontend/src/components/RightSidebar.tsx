@@ -267,7 +267,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-                className="w-full rounded-full border border-[#DADCE0] bg-[#F8F9FA] py-2.5 pl-10 pr-20 text-xs text-[#202124] shadow-sm transition placeholder:text-[#5F6368] focus:border-[#1A73E8] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1A73E8]/30 dark:border-[#3C4043] dark:bg-[#292A2D] dark:text-[#E8EAED] dark:placeholder:text-[#9AA0A6] dark:focus:border-[#8AB4F8] dark:focus:ring-[#8AB4F8]/30"
+                className="w-full rounded-full border border-[#DADCE0] bg-[#F8F9FA] py-2.5 pl-10 pr-20 text-xs text-[#202124] shadow-sm transition placeholder:text-[#5F6368] focus:border-[#1A73E8] focus:bg-white dark:focus:bg-[#292A2D] focus:outline-none focus:ring-2 focus:ring-[#1A73E8]/30 dark:border-[#3C4043] dark:bg-[#292A2D] dark:text-[#E8EAED] dark:placeholder:text-[#9AA0A6] dark:focus:border-[#8AB4F8] dark:focus:ring-[#8AB4F8]/30"
               />
               <button
                 type="button"
@@ -362,57 +362,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
             </div>
           ) : analysis ? (
             <>
-              {/* Area hero */}
-              <div className="px-4 pb-3 pt-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="flex items-center gap-1.5 text-[11px] text-[#5F6368] dark:text-[#9AA0A6]">
-                      <Navigation size={11} className="shrink-0" />
-                      <span className="truncate">
-                        {analysis.city} • {analysis.district}
-                      </span>
-                    </p>
-                    <h2 className="mt-0.5 text-xl font-semibold leading-tight tracking-tight">{analysis.area_name}</h2>
-                    <p className="mt-1 font-mono text-[10px] text-[#5F6368] dark:text-[#9AA0A6]">ID: {analysis.grid_id}</p>
-                  </div>
-
-                  <div
-                    className="shrink-0 text-right"
-                    title="Peluang banjir menurut model, bukan persentase wilayah yang tergenang"
-                  >
-                    <p
-                      className={`text-3xl font-semibold leading-none tabular-nums ${mapColor ? '' : riskClasses.text}`}
-                      style={mapColor ? { color: mapColor } : undefined}
-                    >
-                      {formatProbability(analysis.flood_probability) ?? '–'}
-                    </p>
-                    <p
-                      className={`mt-1 text-[11px] font-semibold ${mapColor ? '' : riskClasses.text}`}
-                      style={mapColor ? { color: mapColor } : undefined}
-                    >
-                      {riskClasses.label}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Tier bar: active tier is highlighted */}
-                <div className="mt-4">
-                  <div className="flex gap-1">
-                    {TIERS.map((t, i) => (
-                      <span
-                        key={t.name}
-                        className="h-1.5 flex-1 rounded-full transition-opacity"
-                        style={{ backgroundColor: t.color, opacity: i === activeTier ? 1 : 0.25 }}
-                      />
-                    ))}
-                  </div>
-                  <div className="mt-1.5 flex items-center justify-between text-[10px] text-[#5F6368] dark:text-[#9AA0A6]">
-                    <span>Peluang banjir (model)</span>
-                    <span>{analysis.target_date ? `untuk ${analysis.target_date}` : `prakiraan ${timeHorizon}`}</span>
-                  </div>
-                </div>
-              </div>
-
               {/* Tabs (Google Maps style) */}
               <div role="tablist" className="flex border-b border-[#DADCE0] px-2 dark:border-[#3C4043]">
                 {TABS.map((t) => (
@@ -435,265 +384,318 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 ))}
               </div>
 
-              {/* Tab content */}
-              <div className="flex-1 overflow-y-auto px-4 py-4 [scrollbar-gutter:stable]">
-                {/* ───── RINGKASAN ───── */}
-                {activeTab === 'ringkasan' && (
-                  <div className="space-y-4">
-                    {areaWarning && (
-                      <div
-                        className="rounded-2xl border-l-4 bg-[#F8F9FA] p-3 dark:bg-[#292A2D]"
-                        style={{ borderLeftColor: WARNING_LEVELS[areaWarning.level]?.color }}
-                      >
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold">Peringatan dini aktif</span>
-                          <span className="font-bold uppercase" style={{ color: WARNING_LEVELS[areaWarning.level]?.color }}>
-                            {WARNING_LEVELS[areaWarning.level]?.label ?? areaWarning.level}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-[12px] leading-snug text-[#3C4043] dark:text-[#E8EAED]/90">{areaWarning.message}</p>
-                        <p className="mt-1 text-[10.5px] text-[#5F6368] dark:text-[#9AA0A6]">
-                          Sejak {formatWib(areaWarning.since)} WIB · dari agen pemantau, cek info resmi BPBD
-                        </p>
-                      </div>
-                    )}
-                    <div>
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-xs font-semibold">
-                          <AlertTriangle size={14} className="text-[#1A73E8] dark:text-[#8AB4F8]" />
-                          Hasil Model
+              <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+                {/* Area hero */}
+                <div className="px-4 pb-3 pt-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1.5 text-[11px] text-[#5F6368] dark:text-[#9AA0A6]">
+                        <Navigation size={11} className="shrink-0" />
+                        <span className="truncate">
+                          {analysis.city} • {analysis.district}
                         </span>
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
-                            isLimitedData
-                              ? 'bg-[#FEF7E0] text-[#B06000] dark:bg-[#F9AB00]/15 dark:text-[#FDD663]'
-                              : 'bg-[#E6F4EA] text-[#188038] dark:bg-[#34A853]/15 dark:text-[#81C995]'
-                          }`}
-                          title="Data lengkap = hujan dan tinggi muka air tersedia dan terbaru. Data terbatas = model berjalan dengan data kurang lengkap, jadi perlakukan sebagai perkiraan kasar."
-                        >
-                          {analysis.confidence_badge}
-                        </span>
-                      </div>
-                      <p className="text-[13px] leading-relaxed text-[#3C4043] dark:text-[#E8EAED]/90">{summaryText}</p>
-
-                      {isElevated && (
-                        <p className="mt-3 rounded-2xl bg-[#FEF7E0] p-3 text-[11px] leading-relaxed text-[#7A4F01] dark:bg-[#F9AB00]/10 dark:text-[#FDD663]">
-                          <b>Mengapa berisiko padahal hampir tidak hujan?</b> Model tidak hanya melihat hujan hari ini,
-                          tetapi juga curah hujan 1-30 hari terakhir, tinggi muka air (bila tersedia), dan elevasi
-                          wilayah. Penyebab spesifik per wilayah tidak tersedia.
-                        </p>
-                      )}
+                      </p>
+                      <h2 className="mt-0.5 text-xl font-semibold leading-tight tracking-tight">{analysis.area_name}</h2>
+                      <p className="mt-1 font-mono text-[10px] text-[#5F6368] dark:text-[#9AA0A6]">ID: {analysis.grid_id}</p>
                     </div>
 
-                    {/* Metrics list */}
-                    <div className="divide-y divide-[#DADCE0] border-y border-[#DADCE0] dark:divide-[#3C4043] dark:border-[#3C4043]">
-                      <Row
-                        icon={<Droplets size={16} />}
-                        label="Curah hujan (per hari)"
-                        title="Total curah hujan prakiraan untuk hari yang diprediksi"
+                    <div
+                      className="shrink-0 text-right"
+                      title="Peluang banjir menurut model, bukan persentase wilayah yang tergenang"
+                    >
+                      <p
+                        className={`text-3xl font-semibold leading-none tabular-nums ${mapColor ? '' : riskClasses.text}`}
+                        style={mapColor ? { color: mapColor } : undefined}
                       >
-                        <span className="tabular-nums">{isNoRisk ? 0 : analysis.rainfall_mm}</span>
-                        <span className="ml-1 text-[11px] font-normal text-[#5F6368] dark:text-[#9AA0A6]">mm/hari</span>
+                        {formatProbability(analysis.flood_probability) ?? '–'}
+                      </p>
+                      <p
+                        className={`mt-1 text-[11px] font-semibold ${mapColor ? '' : riskClasses.text}`}
+                        style={mapColor ? { color: mapColor } : undefined}
+                      >
+                        {riskClasses.label}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Tier bar: active tier is highlighted */}
+                  <div className="mt-4">
+                    <div className="flex gap-1">
+                      {TIERS.map((t, i) => (
                         <span
-                          className="ml-2 text-[11px] font-semibold"
-                          style={{ color: getColorForRainfall(analysis.rainfall_mm) }}
+                          key={t.name}
+                          className="h-1.5 flex-1 rounded-full transition-opacity"
+                          style={{ backgroundColor: t.color, opacity: i === activeTier ? 1 : 0.25 }}
+                        />
+                      ))}
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between text-[10px] text-[#5F6368] dark:text-[#9AA0A6]">
+                      <span>Peluang banjir (model)</span>
+                      <span>{analysis.target_date ? `untuk ${analysis.target_date}` : `prakiraan ${timeHorizon}`}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tab content */}
+                <div className="px-4 pb-4 pt-1">
+                  {/* ───── RINGKASAN ───── */}
+                  {activeTab === 'ringkasan' && (
+                    <div className="space-y-4">
+                      {areaWarning && (
+                        <div
+                          className="rounded-2xl border-l-4 bg-[#F8F9FA] p-3 dark:bg-[#292A2D]"
+                          style={{ borderLeftColor: WARNING_LEVELS[areaWarning.level]?.color }}
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold">Peringatan dini aktif</span>
+                            <span className="font-bold uppercase" style={{ color: WARNING_LEVELS[areaWarning.level]?.color }}>
+                              {WARNING_LEVELS[areaWarning.level]?.label ?? areaWarning.level}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[12px] leading-snug text-[#3C4043] dark:text-[#E8EAED]/90">{areaWarning.message}</p>
+                          <p className="mt-1 text-[10.5px] text-[#5F6368] dark:text-[#9AA0A6]">
+                            Sejak {formatWib(areaWarning.since)} WIB · dari agen pemantau, cek info resmi BPBD
+                          </p>
+                        </div>
+                      )}
+                      <div>
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-xs font-semibold">
+                            <AlertTriangle size={14} className="text-[#1A73E8] dark:text-[#8AB4F8]" />
+                            Hasil Model
+                          </span>
+                          <span
+                            className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
+                              isLimitedData
+                                ? 'bg-[#FEF7E0] text-[#B06000] dark:bg-[#F9AB00]/15 dark:text-[#FDD663]'
+                                : 'bg-[#E6F4EA] text-[#188038] dark:bg-[#34A853]/15 dark:text-[#81C995]'
+                            }`}
+                            title="Data lengkap = hujan dan tinggi muka air tersedia dan terbaru. Data terbatas = model berjalan dengan data kurang lengkap, jadi perlakukan sebagai perkiraan kasar."
+                          >
+                            {analysis.confidence_badge}
+                          </span>
+                        </div>
+                        <p className="text-[13px] leading-relaxed text-[#3C4043] dark:text-[#E8EAED]/90">{summaryText}</p>
+
+                        {isElevated && (
+                          <p className="mt-3 rounded-2xl bg-[#FEF7E0] p-3 text-[11px] leading-relaxed text-[#7A4F01] dark:bg-[#F9AB00]/10 dark:text-[#FDD663]">
+                            <b>Mengapa berisiko padahal hampir tidak hujan?</b> Model tidak hanya melihat hujan hari ini,
+                            tetapi juga curah hujan 1-30 hari terakhir, tinggi muka air (bila tersedia), dan elevasi
+                            wilayah. Penyebab spesifik per wilayah tidak tersedia.
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Metrics list */}
+                      <div className="divide-y divide-[#DADCE0] border-y border-[#DADCE0] dark:divide-[#3C4043] dark:border-[#3C4043]">
+                        <Row
+                          icon={<Droplets size={16} />}
+                          label="Curah hujan (per hari)"
+                          title="Total curah hujan prakiraan untuk hari yang diprediksi"
+                        >
+                          <span className="tabular-nums">{isNoRisk ? 0 : analysis.rainfall_mm}</span>
+                          <span className="ml-1 text-[11px] font-normal text-[#5F6368] dark:text-[#9AA0A6]">mm/hari</span>
+                          <span
+                            className="ml-2 text-[11px] font-semibold"
+                            style={{ color: getColorForRainfall(analysis.rainfall_mm) }}
+                          >
+                            {rainCategory(analysis.rainfall_mm).label}
+                          </span>
+                        </Row>
+                        <Row
+                          icon={<Waves size={16} />}
+                          label={nearbyStations.length > 0
+                            ? `Tinggi muka air sungai (per jam) ${nearbyStations[0].name}`
+                            : 'Tinggi muka air sungai (per jam)'}
+                          title="Tinggi air di pos pemantau sungai/pintu air terdekat (TMA) per jam"
+                        >
+                          {analysis.water_level_cm != null ? (
+                            <>
+                              <span className="tabular-nums">{analysis.water_level_cm}</span>
+                              <span className="ml-1 text-[11px] font-normal text-[#5F6368] dark:text-[#9AA0A6]">cm</span>
+                            </>
+                          ) : (
+                            <span className="text-[#5F6368] dark:text-[#9AA0A6]">Belum tersedia</span>
+                          )}
+                          <span className={`ml-2 text-[11px] font-semibold ${siagaClasses.text}`}>
+                            {isNoRisk
+                              ? 'Normal'
+                              : nearbyStations[0]?.status ?? analysis.siaga_level}
+                          </span>
+                        </Row>
+                      </div>
+
+                      <div>
+                        <SectionTitle>
+                          {nearbyStations[0]?.name ? `  ${nearbyStations[0].name}` : ''}
+                        </SectionTitle>
+                        <HydrographChart
+                          data={analysis.hydrograph}
+                          currentLevel={analysis.water_level_cm}
+                        />
+                      </div>
+
+                      <Disclosure
+                        title="Penjelasan prediksi"
+                        icon={<Info size={13} className="text-[#1A73E8] dark:text-[#8AB4F8]" />}
+                      >
+                        <ul className="divide-y divide-[#DADCE0] dark:divide-[#3C4043]">
+                          {EXPLANATIONS.map((e) => (
+                            <li key={e.term} className="px-3.5 py-3">
+                              <p className="text-xs font-semibold">{e.term}</p>
+                              <p className="mt-0.5 text-[12px] leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
+                                {e.desc}
+                              </p>
+                            </li>
+                          ))}
+
+                          <li className="px-3.5 py-3">
+                            <p className="text-xs font-semibold">Kategori risiko</p>
+                            <p className="mt-0.5 text-[12px] leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
+                              Dikelompokkan dari persen peluang dengan batas tetap. Ini perkiraan, bukan kepastian.
+                            </p>
+                            <ul className="mt-2.5 grid grid-cols-2 gap-1.5">
+                              {TIERS.map((t, i) => (
+                                <li
+                                  key={t.name}
+                                  className={`flex items-center gap-2 rounded-xl border px-2.5 py-1.5 ${
+                                    i === activeTier
+                                      ? 'border-[#1A73E8] bg-[#E8F0FE] dark:border-[#8AB4F8] dark:bg-[#1A73E8]/10'
+                                      : 'border-[#DADCE0] dark:border-[#3C4043]'
+                                  }`}
+                                >
+                                  <span
+                                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                    style={{ backgroundColor: t.color }}
+                                  />
+                                  <span className="min-w-0">
+                                    <span className="block text-[11px] font-semibold leading-tight">{t.name}</span>
+                                    <span className="block text-[10px] text-[#5F6368] dark:text-[#9AA0A6]">{t.range}</span>
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                            <p className="mt-2 text-[10px] text-[#5F6368] dark:text-[#9AA0A6]">
+                              Warna yang sama dipakai di peta dan pada angka peluang.
+                            </p>
+                          </li>
+                        </ul>
+                      </Disclosure>
+                    </div>
+                  )}
+
+                  {/* ───── HUJAN ───── */}
+                  {activeTab === 'hujan' && (
+                    <div className="space-y-4">
+                      <div className="flex items-end justify-between border-b border-[#DADCE0] pb-4 dark:border-[#3C4043]">
+                        <div>
+                          <p className="text-[11px] text-[#5F6368] dark:text-[#9AA0A6]">Curah hujan hari prakiraan</p>
+                          <p className="mt-1 text-3xl font-semibold leading-none tabular-nums">
+                            {isNoRisk ? 0 : analysis.rainfall_mm}
+                            <span className="ml-1 text-xs font-normal text-[#5F6368] dark:text-[#9AA0A6]">mm/hari</span>
+                          </p>
+                        </div>
+                        <span
+                          className="rounded-full px-3 py-1 text-[11px] font-semibold"
+                          style={{
+                            color: getColorForRainfall(analysis.rainfall_mm),
+                            backgroundColor: `${getColorForRainfall(analysis.rainfall_mm)}22`,
+                          }}
                         >
                           {rainCategory(analysis.rainfall_mm).label}
                         </span>
-                      </Row>
-                      <Row
-                        icon={<Waves size={16} />}
-                        label={nearbyStations.length > 0
-                          ? `Tinggi muka air sungai (per jam) ${nearbyStations[0].name}`
-                          : 'Tinggi muka air sungai (per jam)'}
-                        title="Tinggi air di pos pemantau sungai/pintu air terdekat (TMA) per jam"
-                      >
-                        {analysis.water_level_cm != null ? (
-                          <>
-                            <span className="tabular-nums">{analysis.water_level_cm}</span>
-                            <span className="ml-1 text-[11px] font-normal text-[#5F6368] dark:text-[#9AA0A6]">cm</span>
-                          </>
-                        ) : (
-                          <span className="text-[#5F6368] dark:text-[#9AA0A6]">Belum tersedia</span>
-                        )}
-                        <span className={`ml-2 text-[11px] font-semibold ${siagaClasses.text}`}>
-                          {isNoRisk
-                            ? 'Normal'
-                            : nearbyStations[0]?.status ?? analysis.siaga_level}
-                        </span>
-                      </Row>
-                    </div>
+                      </div>
 
-                    <div>
-                      <SectionTitle>
-                        {nearbyStations[0]?.name ? `  ${nearbyStations[0].name}` : ''}
-                      </SectionTitle>
-                      <HydrographChart
-                        data={analysis.hydrograph}
-                        currentLevel={analysis.water_level_cm}
+                      <RainForecast
+                        rainfallMm={analysis.rainfall_mm}
+                        probabilityPct={analysis.rain_probability_pct}
+                        targetDate={analysis.target_date}
+                        daily={analysis.rain_daily ?? []}
                       />
                     </div>
+                  )}
 
-                    <Disclosure
-                      title="Penjelasan prediksi"
-                      icon={<Info size={13} className="text-[#1A73E8] dark:text-[#8AB4F8]" />}
-                    >
-                      <ul className="divide-y divide-[#DADCE0] dark:divide-[#3C4043]">
-                        {EXPLANATIONS.map((e) => (
-                          <li key={e.term} className="px-3.5 py-3">
-                            <p className="text-xs font-semibold">{e.term}</p>
-                            <p className="mt-0.5 text-[12px] leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
-                              {e.desc}
-                            </p>
-                          </li>
-                        ))}
+                  {/* ───── SARAN ───── */}
+                  {activeTab === 'saran' && (
+                    <div className="space-y-5">
+                      {/* Evacuation route */}
+                      <section>
+                        <SectionTitle>Jalur alternatif</SectionTitle>
+                        <RoutePlanner {...planner} />
+                      </section>
 
-                        <li className="px-3.5 py-3">
-                          <p className="text-xs font-semibold">Kategori risiko</p>
-                          <p className="mt-0.5 text-[12px] leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
-                            Dikelompokkan dari persen peluang dengan batas tetap. Ini perkiraan, bukan kepastian.
-                          </p>
-                          <ul className="mt-2.5 grid grid-cols-2 gap-1.5">
-                            {TIERS.map((t, i) => (
-                              <li
-                                key={t.name}
-                                className={`flex items-center gap-2 rounded-xl border px-2.5 py-1.5 ${
-                                  i === activeTier
-                                    ? 'border-[#1A73E8] bg-[#E8F0FE] dark:border-[#8AB4F8] dark:bg-[#1A73E8]/10'
-                                    : 'border-[#DADCE0] dark:border-[#3C4043]'
-                                }`}
+                      {/* Affected roads */}
+                      {analysis.affected_roads && analysis.affected_roads.length > 0 && (
+                        <section>
+                          <SectionTitle>Ruas jalan terdampak genangan</SectionTitle>
+                          <div className="flex flex-wrap gap-1.5">
+                            {analysis.affected_roads.map((road, i) => (
+                              <span
+                                key={i}
+                                className="flex items-center gap-1.5 rounded-full border border-[#DADCE0] px-3 py-1 text-[11px] font-medium dark:border-[#3C4043]"
                               >
-                                <span
-                                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                                  style={{ backgroundColor: t.color }}
-                                />
-                                <span className="min-w-0">
-                                  <span className="block text-[11px] font-semibold leading-tight">{t.name}</span>
-                                  <span className="block text-[10px] text-[#5F6368] dark:text-[#9AA0A6]">{t.range}</span>
-                                </span>
+                                <span className="h-1.5 w-1.5 rounded-full bg-[#B8514A]" />
+                                {road}
+                              </span>
+                            ))}
+                          </div>
+                        </section>
+                      )}
+
+                      {/* High-risk districts */}
+                      <section>
+                        <SectionTitle>
+                          <span className="inline-flex items-center gap-1.5">
+                            <Car size={12} /> Kecamatan risiko tinggi ({highRiskAreas.length})
+                          </span>
+                        </SectionTitle>
+                        {highRiskAreas.length === 0 ? (
+                          <p className="rounded-2xl bg-[#F8F9FA] p-3.5 text-xs text-[#5F6368] dark:bg-[#292A2D] dark:text-[#9AA0A6]">
+                            Tidak ada kecamatan berisiko tinggi pada hari prakiraan ini.
+                          </p>
+                        ) : (
+                          <ul className="max-h-44 divide-y divide-[#DADCE0] overflow-y-auto [scrollbar-gutter:stable] rounded-2xl border border-[#DADCE0] dark:divide-[#3C4043] dark:border-[#3C4043]">
+                            {highRiskAreas.map((f) => (
+                              <li key={f.properties.grid_id}>
+                                <button
+                                  type="button"
+                                  onClick={() => onSelectRegionById(f.properties.grid_id)}
+                                  className="flex w-full items-center justify-between px-3 py-2 text-left text-xs transition hover:bg-[#F1F3F4] dark:hover:bg-[#292A2D]"
+                                >
+                                  <span className="flex items-center gap-2 font-medium">
+                                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: RISK_COLORS.High }} />
+                                    {f.properties.area_name}
+                                  </span>
+                                  <span className="font-mono tabular-nums text-[#5F6368] dark:text-[#9AA0A6]">
+                                    {formatProbability(f.properties.flood_probability) ?? '–'}
+                                  </span>
+                                </button>
                               </li>
                             ))}
                           </ul>
-                          <p className="mt-2 text-[10px] text-[#5F6368] dark:text-[#9AA0A6]">
-                            Warna yang sama dipakai di peta dan pada angka peluang.
-                          </p>
-                        </li>
-                      </ul>
-                    </Disclosure>
-                  </div>
-                )}
+                        )}
+                      </section>
 
-                {/* ───── HUJAN ───── */}
-                {activeTab === 'hujan' && (
-                  <div className="space-y-4">
-                    <div className="flex items-end justify-between border-b border-[#DADCE0] pb-4 dark:border-[#3C4043]">
-                      <div>
-                        <p className="text-[11px] text-[#5F6368] dark:text-[#9AA0A6]">Curah hujan hari prakiraan</p>
-                        <p className="mt-1 text-3xl font-semibold leading-none tabular-nums">
-                          {isNoRisk ? 0 : analysis.rainfall_mm}
-                          <span className="ml-1 text-xs font-normal text-[#5F6368] dark:text-[#9AA0A6]">mm/hari</span>
-                        </p>
-                      </div>
-                      <span
-                        className="rounded-full px-3 py-1 text-[11px] font-semibold"
-                        style={{
-                          color: getColorForRainfall(analysis.rainfall_mm),
-                          backgroundColor: `${getColorForRainfall(analysis.rainfall_mm)}22`,
-                        }}
-                      >
-                        {rainCategory(analysis.rainfall_mm).label}
-                      </span>
-                    </div>
-
-                    <RainForecast
-                      rainfallMm={analysis.rainfall_mm}
-                      probabilityPct={analysis.rain_probability_pct}
-                      targetDate={analysis.target_date}
-                      daily={analysis.rain_daily ?? []}
-                    />
-                  </div>
-                )}
-
-                {/* ───── SARAN ───── */}
-                {activeTab === 'saran' && (
-                  <div className="space-y-5">
-                    {/* Evacuation route */}
-                    <section>
-                      <SectionTitle>Jalur alternatif</SectionTitle>
-                      <RoutePlanner {...planner} />
-                    </section>
-
-                    {/* Affected roads */}
-                    {analysis.affected_roads && analysis.affected_roads.length > 0 && (
+                      {/* Emergency contacts */}
                       <section>
-                        <SectionTitle>Ruas jalan terdampak genangan</SectionTitle>
-                        <div className="flex flex-wrap gap-1.5">
-                          {analysis.affected_roads.map((road, i) => (
-                            <span
-                              key={i}
-                              className="flex items-center gap-1.5 rounded-full border border-[#DADCE0] px-3 py-1 text-[11px] font-medium dark:border-[#3C4043]"
+                        <SectionTitle>Nomor darurat</SectionTitle>
+                        <div className="grid grid-cols-3 gap-2">
+                          {EMERGENCY_CONTACTS.map((c) => (
+                            <a
+                              key={c.label}
+                              href={`tel:${c.number}`}
+                              className="flex flex-col items-center gap-0.5 rounded-2xl border border-[#DADCE0] py-2.5 transition hover:border-[#1A73E8] hover:bg-[#E8F0FE] dark:border-[#3C4043] dark:hover:border-[#8AB4F8] dark:hover:bg-[#1A73E8]/10"
                             >
-                              <span className="h-1.5 w-1.5 rounded-full bg-[#B8514A]" />
-                              {road}
-                            </span>
+                              <PhoneCall size={13} className="text-[#1A73E8] dark:text-[#8AB4F8]" />
+                              <span className="text-[11px] font-medium">{c.label}</span>
+                              <span className="font-mono text-xs font-bold">{c.number}</span>
+                            </a>
                           ))}
                         </div>
                       </section>
-                    )}
-
-                    {/* High-risk districts */}
-                    <section>
-                      <SectionTitle>
-                        <span className="inline-flex items-center gap-1.5">
-                          <Car size={12} /> Kecamatan risiko tinggi ({highRiskAreas.length})
-                        </span>
-                      </SectionTitle>
-                      {highRiskAreas.length === 0 ? (
-                        <p className="rounded-2xl bg-[#F8F9FA] p-3.5 text-xs text-[#5F6368] dark:bg-[#292A2D] dark:text-[#9AA0A6]">
-                          Tidak ada kecamatan berisiko tinggi pada hari prakiraan ini.
-                        </p>
-                      ) : (
-                        <ul className="max-h-44 divide-y divide-[#DADCE0] overflow-y-auto [scrollbar-gutter:stable] rounded-2xl border border-[#DADCE0] dark:divide-[#3C4043] dark:border-[#3C4043]">
-                          {highRiskAreas.map((f) => (
-                            <li key={f.properties.grid_id}>
-                              <button
-                                type="button"
-                                onClick={() => onSelectRegionById(f.properties.grid_id)}
-                                className="flex w-full items-center justify-between px-3 py-2 text-left text-xs transition hover:bg-[#F1F3F4] dark:hover:bg-[#292A2D]"
-                              >
-                                <span className="flex items-center gap-2 font-medium">
-                                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: RISK_COLORS.High }} />
-                                  {f.properties.area_name}
-                                </span>
-                                <span className="font-mono tabular-nums text-[#5F6368] dark:text-[#9AA0A6]">
-                                  {formatProbability(f.properties.flood_probability) ?? '–'}
-                                </span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </section>
-
-                    {/* Emergency contacts */}
-                    <section>
-                      <SectionTitle>Nomor darurat</SectionTitle>
-                      <div className="grid grid-cols-3 gap-2">
-                        {EMERGENCY_CONTACTS.map((c) => (
-                          <a
-                            key={c.label}
-                            href={`tel:${c.number}`}
-                            className="flex flex-col items-center gap-0.5 rounded-2xl border border-[#DADCE0] py-2.5 transition hover:border-[#1A73E8] hover:bg-[#E8F0FE] dark:border-[#3C4043] dark:hover:border-[#8AB4F8] dark:hover:bg-[#1A73E8]/10"
-                          >
-                            <PhoneCall size={13} className="text-[#1A73E8] dark:text-[#8AB4F8]" />
-                            <span className="text-[11px] font-medium">{c.label}</span>
-                            <span className="font-mono text-xs font-bold">{c.number}</span>
-                          </a>
-                        ))}
-                      </div>
-                    </section>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           ) : (
