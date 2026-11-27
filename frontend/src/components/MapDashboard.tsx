@@ -19,6 +19,8 @@ import { RightSidebar } from './RightSidebar';
 import { HeatmapLegend } from './HeatmapLegend';
 import { ReportModal, type ReportDraft } from './ReportModal';
 import { featureCenter, type LiveReport } from '@/data/reportConditions';
+import type { WarningsResponse } from '@/data/agent';
+import { WarningBanner } from './WarningBanner';
 import type { RouteResponse } from '@/data/types';
 import { dominantTier } from '@/utils/areaColors';
 import { MapControls } from './MapControls';
@@ -70,6 +72,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [reports, setReports] = useState<LiveReport[]>([]);
+  const [warningsData, setWarningsData] = useState<WarningsResponse | null>(null);
   // Alternative route. The answer is tied to the day/mode it was computed for, so changes hide it.
   const [routeRes, setRouteRes] = useState<{ data: RouteResponse; key: string } | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
@@ -264,6 +267,25 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
     return () => clearInterval(timer);
   }, [loadReports]);
 
+  // Early warnings from the Flood Watch Agent: load now and refresh every minute.
+  useEffect(() => {
+    let alive = true;
+    const loadWarnings = async () => {
+      try {
+        const res = await fetch('/api/v1/warnings');
+        if (res.ok && alive) setWarningsData((await res.json()) as WarningsResponse);
+      } catch (err) {
+        console.error('Error fetching warnings:', err);
+      }
+    };
+    loadWarnings();
+    const timer = setInterval(loadWarnings, 60_000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, []);
+
   // Forecast Timeline Simulation Loop
   useEffect(() => {
     if (!isSimulating) return;
@@ -448,6 +470,19 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
         Lapor kondisi
       </button>
 
+      <WarningBanner
+        warnings={warningsData?.active ?? []}
+        lastCheckedAt={warningsData?.last_cycle?.at ?? null}
+        onSelect={(gridId) => {
+          handleSelectGrid(gridId);
+          const f = features.find((x) => x.properties.grid_id === gridId);
+          if (f) {
+            const [lat, lng] = featureCenter(f);
+            window.dispatchEvent(new CustomEvent('pawang:flyto', { detail: { lat, lng, zoom: 13 } }));
+          }
+        }}
+      />
+
       {isRoutePicking && (
         <div className="absolute left-1/2 top-20 z-30 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-[#DADCE0] bg-white/95 px-3 py-2 text-xs text-[#202124] shadow-lg backdrop-blur-md dark:border-[#3C4043] dark:bg-[#202124]/95 dark:text-[#E8EAED]">
           <span>Klik titik tujuan pada peta</span>
@@ -510,6 +545,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
         onToggleSimulation={() => setIsSimulating(!isSimulating)}
         onSelectRegionById={handleSelectGrid}
         onOpenSearchModal={() => setIsSearchOpen(true)}
+        areaWarning={warningsData?.active.find((w) => w.grid_id === selectedGridId) ?? null}
         planner={{
           originName: originFeature?.properties.area_name ?? null,
           features,

@@ -8,6 +8,7 @@ only has to point its fetch at this server instead of the mock route handlers.
 from __future__ import annotations
 
 import datetime as dt
+import hmac
 import logging
 import re
 from contextlib import asynccontextmanager
@@ -16,7 +17,7 @@ from typing import Literal
 
 import httpx
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 
@@ -99,6 +100,27 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
                        reports=(lambda: [r for r in reports.active() if not r.get("demo")]) if s.data_mode == "live"
                        else None, cooldown_h=s.watch_cooldown_h)
     scheduler = WatchScheduler(watch, s.watch_interval_s if s.data_mode == "live" else 0)
+    admin_fail_limit = PerMinute(10)        # wrong tokens per minute, for everyone: blunts guessing
+
+    def _deny() -> None:
+        if not admin_fail_limit.allow():
+            raise HTTPException(429, "Terlalu banyak percobaan, coba lagi sebentar lagi.")
+        raise HTTPException(401, "Token admin salah.")
+
+    def _admin_matches(given: str | None) -> bool:
+        return bool(s.admin_token) and given is not None and hmac.compare_digest(given.encode(), s.admin_token.encode())
+
+    def admin_only(x_admin_token: str | None = Header(default=None)) -> None:
+        """The agent log exists only when PAWANG_ADMIN_TOKEN is set (404 otherwise), and then needs the token."""
+        if not s.admin_token:
+            raise HTTPException(404, "Not Found")
+        if not _admin_matches(x_admin_token):
+            _deny()
+
+    def admin_if_configured(x_admin_token: str | None = Header(default=None)) -> None:
+        """POST /watch/*: open (and rate-limited) while no token is set, admin-only once PAWANG_ADMIN_TOKEN is set."""
+        if s.admin_token and not _admin_matches(x_admin_token):
+            _deny()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -273,7 +295,27 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
                 "last_cycle": None if last is None else {k: last[k] for k in (
                     "cycle_id", "target_date", "at", "triggered", "decided_by") if k in last}}
 
-    @app.post("/api/v1/watch/run")
+    @app.get("/api/v1/admin/agent-log", dependencies=[Depends(admin_only)])
+    def agent_log(limit: int = Query(100, ge=1, le=200)) -> dict:
+        """Everything the Flood Watch Agent did, for the admin page: each cycle with its changes, tool calls, the
+        LLM proposal, guardrail errors, published / suppressed / cleared warnings (newest first), the active
+        warnings and the agent settings."""
+        mem = watch.memory.data
+        all_decisions = mem["decisions"]
+        return {
+            "data_mode": s.data_mode,
+            "agent": {"scheduler_running": scheduler.running, "interval_s": s.watch_interval_s if s.data_mode == "live" else 0,
+                      "cooldown_h": s.watch_cooldown_h, "max_steps": watch.max_steps, "llm_enabled": s.llm_enabled,
+                      "llm_model": s.llm_model if s.llm_enabled else None},
+            "totals": {"cycles": len(all_decisions), "triggered": sum(bool(d.get("triggered")) for d in all_decisions),
+                       "decided_by_qwen": sum(d.get("decided_by") == "qwen" for d in all_decisions),
+                       "guardrail_rejected": sum(bool(d.get("guardrail_errors")) for d in all_decisions),
+                       "warnings_published": len(mem["warnings"]), "areas_tracked": len(mem["areas"])},
+            "active": [{"grid_id": g, **v} for g, v in watch.memory.active().items()],
+            "decisions": list(reversed(all_decisions))[:limit],
+        }
+
+    @app.post("/api/v1/watch/run", dependencies=[Depends(admin_if_configured)])
     def watch_run(time: str = "1h", date: str | None = None) -> dict:
         """Run one Flood Watch cycle now and return its full decision trace (the "why" behind each warning).
         Replay mode needs ?date=YYYY-MM-DD; the cycle then acts as if it were that morning."""
@@ -286,7 +328,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
         except WatchBusy:
             raise HTTPException(409, "Siklus Flood Watch lain sedang berjalan, coba lagi sebentar lagi.")
 
-    @app.post("/api/v1/watch/replay")
+    @app.post("/api/v1/watch/replay", dependencies=[Depends(admin_if_configured)])
     def watch_replay(start: str, end: str) -> dict:
         """Replay mode only: run one cycle per day from start to end (at most 62 days) with a fresh, in-memory
         memory, so a demo can show warnings appearing and escalating over a past flood period."""

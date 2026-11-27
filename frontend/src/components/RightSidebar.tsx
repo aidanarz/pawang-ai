@@ -22,6 +22,8 @@ import {
 import { AreaAnalysisResponse, GeoJSONGridFeature, TimeHorizon } from '@/data/types';
 import { getRiskBadgeClasses, getSiagaBadgeClasses, getColorForRainfall } from '@/utils/colorScale';
 import { HydrographChart } from './HydrographChart';
+import type { ActiveWarning } from '@/data/agent';
+import { WARNING_LEVELS, formatWib } from '@/utils/warningStyle';
 import { RoutePlanner, type RoutePlannerProps } from './RoutePlanner';
 import { Disclosure } from './Disclosure';
 import { RainForecast } from './RainForecast';
@@ -44,6 +46,8 @@ interface RightSidebarProps {
   onToggleSimulation: () => void;
   onSelectRegionById: (gridId: string) => void;
   onOpenSearchModal: () => void;
+  /** Active early warning for the selected area, from the Flood Watch Agent. */
+  areaWarning?: ActiveWarning | null;
   /** Alternative-route planner (state and actions live in MapDashboard, the map draws the route). */
   planner: RoutePlannerProps;
 }
@@ -146,6 +150,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   onToggleSimulation,
   onSelectRegionById,
   onOpenSearchModal,
+  areaWarning = null,
   planner,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -435,6 +440,23 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 {/* ───── RINGKASAN ───── */}
                 {activeTab === 'ringkasan' && (
                   <div className="space-y-4">
+                    {areaWarning && (
+                      <div
+                        className="rounded-2xl border-l-4 bg-[#F8F9FA] p-3 dark:bg-[#292A2D]"
+                        style={{ borderLeftColor: WARNING_LEVELS[areaWarning.level]?.color }}
+                      >
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold">Peringatan dini aktif</span>
+                          <span className="font-bold uppercase" style={{ color: WARNING_LEVELS[areaWarning.level]?.color }}>
+                            {WARNING_LEVELS[areaWarning.level]?.label ?? areaWarning.level}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[12px] leading-snug text-[#3C4043] dark:text-[#E8EAED]/90">{areaWarning.message}</p>
+                        <p className="mt-1 text-[10.5px] text-[#5F6368] dark:text-[#9AA0A6]">
+                          Sejak {formatWib(areaWarning.since)} WIB · dari agen pemantau, cek info resmi BPBD
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <div className="mb-2 flex items-center justify-between">
                         <span className="flex items-center gap-1.5 text-xs font-semibold">

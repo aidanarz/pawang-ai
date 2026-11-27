@@ -10,6 +10,26 @@ Every change (also the ones made with an AI assistant): what, which files, why. 
   route requests select live or replay without restarting the server; health reports available modes and archive days.
 - **Usage docs:** `HOW TO RUN.md` documents both API modes and frontend checks.
 
+## 2026-11-27 · Early warnings in the frontend + admin agent log page
+- **Public:** `GET /api/v1/warnings` is now shown. New `components/WarningBanner.tsx` (top left, under "Lapor kondisi"):
+  one pill "N peringatan dini aktif" coloured by the highest level (waspada yellow, siaga orange, awas red); it opens
+  the list, and a click selects the kecamatan and flies the map to it. The sidebar's Ringkasan tab shows the active
+  warning of the selected area. `MapDashboard.tsx` polls every 60 s; proxy `app/api/v1/warnings/route.ts` (empty list
+  when the backend is down). Types in `data/agent.ts`, colours and labels in `utils/warningStyle.ts` (+ test).
+- **Admin page `/admin/agent`** (`components/AgentLog.tsx`, `noindex`): every Flood Watch cycle (kept: the last 200),
+  newest first, also the ones where nothing changed: changes the rules detected, each tool call with its result, the
+  LLM proposal, guardrail errors, published / suppressed / cleared warnings; totals; active warnings; settings; a
+  "run one cycle now" form. Auto-refresh every 15 s.
+- **Admin token:** backend `PAWANG_ADMIN_TOKEN`. New `GET /api/v1/admin/agent-log` exists only when it is set (404
+  otherwise) and needs the header `X-Admin-Token` (constant-time compare; 10 wrong tokens/min for everyone, then 429).
+  Once the token is set, `POST /api/v1/watch/run` and `/watch/replay` need it too, which closes the open finding "unauthenticated
+  watch endpoints". With no token they stay open and rate-limited as before. The page keeps the token in
+  `sessionStorage` (this tab only) and sends it through `app/api/v1/admin/agent/route.ts`; the backend does the checking.
+- `backend/app/main.py`, `config.py`, `floodwatch.py` (`WatchScheduler.running`), `.env.example`; 4 new backend tests
+  (backend total 135) and 5 new frontend tests (total 31).
+- Note: in replay mode nothing publishes warnings until a cycle is run (the admin page's button, or
+  `POST /api/v1/watch/run?date=2020-02-25`); the live scheduler needs `PAWANG_WATCH_INTERVAL_S` > 0.
+
 ## 2026-11-22 · Pre-deploy fixes (Coki, branch `fix/pre-deploy-2026-11-22` = `feature/alt-route` + `alt-branch`)
 - **Frontend error from "Fixing hydrochart #2" fixed:** stations without coordinates were passed to the map
   (`tsc` error, Leaflet cannot draw a marker without lat/lng). The map now skips them; the list and hydrograph keep

@@ -187,3 +187,10 @@ reports), a verdict (`clear`, `safe`, `reduced`, `unavoidable`) and a short Indo
   `exclude_locations` (max 50 points). Self-host Valhalla for real traffic.
 - 20 requests per minute for everyone (`PAWANG_ROUTE_PER_MINUTE`); identical requests are cached like the heatmap.
 - Citizen reports are used in live mode only (replay days are years old), and never the demo examples.
+
+
+## Admin: agent log
+
+Set `PAWANG_ADMIN_TOKEN` (a long random value). Then `GET /api/v1/admin/agent-log` (header `X-Admin-Token`) returns every
+Flood Watch cycle with its trace, and `POST /api/v1/watch/run` and `/watch/replay` require the same header. With no token
+the log endpoint answers 404 and `/watch/*` stay open (rate-limited). The frontend page is `/admin/agent`.

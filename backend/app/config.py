@@ -95,6 +95,8 @@ class Settings:
         os.environ.get("PAWANG_WATCH_MEMORY", str(BACKEND_DIR / "data" / "floodwatch_memory.json"))))
     watch_cooldown_h: float = field(default_factory=lambda: float(os.environ.get("PAWANG_WATCH_COOLDOWN_H", "6")))
     # POST /watch/run and /watch/replay can each start several Qwen calls: limit them for everyone (no accounts yet)
+    # Admin pages (agent log) and, once set, POST /api/v1/watch/*. Empty = admin endpoints are off (404).
+    admin_token: str = field(default_factory=lambda: os.environ.get("PAWANG_ADMIN_TOKEN", ""))
     watch_run_per_minute: int = field(default_factory=lambda: int(os.environ.get("PAWANG_WATCH_RUN_PER_MINUTE", "6")))
     watch_replay_per_minute: int = field(default_factory=lambda: int(os.environ.get("PAWANG_WATCH_REPLAY_PER_MINUTE", "2")))
 

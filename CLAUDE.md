@@ -75,10 +75,12 @@ npm run typecheck; npm run lint; npm test; npm run dev
 
 - **Built:** model + heatmap, advice with guardrails, citizen reports, landing page and map, Flood Watch Agent MVP,
   alternative route. Old Agents 1-3 still run in the pipeline and are removed only after Flood Watch is tested with Qwen.
-- **Not built:** chatbot, frontend banner for `GET /api/v1/warnings`, shelters as route destinations, adaptive Flood Watch
-  interval.
+- **Not built:** chatbot, shelters as route destinations, adaptive Flood Watch interval.
+- **Early warnings** show in the map (`WarningBanner`, sidebar notice). **Admin agent log** is the page `/admin/agent`;
+  it and `GET /api/v1/admin/agent-log` work only when `PAWANG_ADMIN_TOKEN` is set on the backend, and then
+  `POST /api/v1/watch/*` need the `X-Admin-Token` header as well.
 - **Not verified:** the route UI in a browser; Flood Watch with real Qwen. Route explanation was measured with the real
   `qwen2.5:7b` (20/20 guardrail passes via `python -m eval.route_explain_check`); the default `qwen3.5:4b` was not installed.
-- **Open findings:** no lock on `FloodWatch.cycle()`, unauthenticated `POST /api/v1/watch/*`, audit only on triggered
-  cycles, one memory file for both modes. Details and next steps: latest file in `docs/updates/`.
+- **Open findings:** see the latest file in `docs/updates/` (the Flood Watch lock, audit, memory-per-mode and endpoint
+  findings were fixed on 2026-11-22; set `PAWANG_ADMIN_TOKEN` in production to protect `/watch/*`).
 - Flood Watch's evaluation (2019 validation, 2020 test) is the rules-only version; the LLM's added value is unproven.

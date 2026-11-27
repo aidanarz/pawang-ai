@@ -254,3 +254,44 @@ def test_watch_endpoints_are_rate_limited(replay_settings, tmp_path):
     rng = {"start": "2020-02-24", "end": "2020-02-25"}
     assert c.post("/api/v1/watch/replay", params=rng).status_code == 200
     assert c.post("/api/v1/watch/replay", params=rng).status_code == 429
+
+
+
+# ---- admin: agent log ----------------------------------------------------------------------------------------
+def admin_client(replay_settings, tmp_path, token="s3cret-token"):
+    s = Settings(**{**replay_settings.__dict__, "watch_memory_path": tmp_path / "watch.json", "admin_token": token})
+    return TestClient(create_app(s))
+
+
+def test_agent_log_is_off_without_a_token(replay_settings, tmp_path):
+    c = admin_client(replay_settings, tmp_path, token="")
+    assert c.get("/api/v1/admin/agent-log").status_code == 404
+    assert c.get("/api/v1/admin/agent-log", headers={"X-Admin-Token": ""}).status_code == 404
+
+
+def test_agent_log_needs_the_right_token_and_shows_every_cycle(replay_settings, tmp_path):
+    c = admin_client(replay_settings, tmp_path)
+    assert c.get("/api/v1/admin/agent-log").status_code == 401
+    assert c.get("/api/v1/admin/agent-log", headers={"X-Admin-Token": "wrong"}).status_code == 401
+    h = {"X-Admin-Token": "s3cret-token"}
+    assert c.post("/api/v1/watch/run", params={"date": FLOOD_DAY.isoformat()}, headers=h).status_code == 200
+    j = c.get("/api/v1/admin/agent-log", headers=h).json()
+    assert j["totals"]["cycles"] == 1 and j["totals"]["triggered"] == 1 and j["totals"]["warnings_published"] > 0
+    d = j["decisions"][0]
+    assert d["triggered"] and d["changes"] and d["published"] and "cycle_id" in d and "steps" in d
+    assert j["agent"]["max_steps"] == 4 and len(j["active"]) > 0 and "s3cret" not in json.dumps(j)
+
+
+def test_watch_actions_need_the_token_once_one_is_set(replay_settings, tmp_path):
+    c = admin_client(replay_settings, tmp_path)
+    p = {"date": FLOOD_DAY.isoformat()}
+    assert c.post("/api/v1/watch/run", params=p).status_code == 401
+    assert c.post("/api/v1/watch/replay", params={"start": "2020-02-20", "end": "2020-02-21"}).status_code == 401
+    assert c.post("/api/v1/watch/run", params=p, headers={"X-Admin-Token": "s3cret-token"}).status_code == 200
+    assert c.get("/api/v1/warnings").status_code == 200          # the public feed stays open
+
+
+def test_wrong_admin_tokens_are_rate_limited(replay_settings, tmp_path):
+    c = admin_client(replay_settings, tmp_path)
+    codes = [c.get("/api/v1/admin/agent-log", headers={"X-Admin-Token": f"guess{i}"}).status_code for i in range(12)]
+    assert codes[:10] == [401] * 10 and codes[-1] == 429
