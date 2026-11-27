@@ -6,9 +6,9 @@ import Image from 'next/image';
 import {
   MapPinned,
   CloudSun,
-  Cpu,
-  ShieldCheck,
-  Map as MapIcon,
+  CloudRain,
+  Waves,
+  Route,
   Menu,
   X,
   Sun,
@@ -83,9 +83,9 @@ const STEPS = [
   },
   {
     num: '04',
-    lead: 'Tulis',
-    big: 'saran.',
-    desc: 'Agen AI (Qwen via Ollama) menyusun saran singkat per kecamatan dengan pagar aturan ketat—tidak boleh mengarang angka atau klaim kepastian. Bila gagal, dipakai teks saran baku.',
+    lead: 'Cari',
+    big: 'rute alternatif.',
+    desc: 'Pengguna dapat mencari rute yang memiliki risiko banjir rendah untuk bepergian dengan lebih aman.',
   },
 ] as const;
 
@@ -96,24 +96,26 @@ const STATS = [
   { value: '2 mode', label: 'Prediksi live & log histori' },
 ] as const;
 
-const ABOUT = [
+const FEATURES = [
   {
-    icon: Cpu,
-    tint: 'bg-[#E8F0FE] text-[#1A73E8] dark:bg-[#1A73E8]/20 dark:text-[#8AB4F8]',
-    title: 'Model ML',
-    desc: 'Regresi logistik terregularisasi yang dilatih dari 5 tahun data historis banjir DKI. Dua varian: full (dengan TMA) dan rainfall_only (tanpa TMA). Mode auto memilih model terbaik sesuai ketersediaan data.',
+    icon: MapPinned,
+    title: 'Risiko Kecamatan',
+    desc: 'Lihat peluang dan kategori risiko banjir tiap kecamatan di peta interaktif.',
   },
   {
-    icon: ShieldCheck,
-    tint: 'bg-[#E6F4EA] text-[#188038] dark:bg-[#34A853]/20 dark:text-[#81C995]',
-    title: 'Agen AI Berguardrail',
-    desc: 'LLM Qwen (self-hosted via Ollama) hanya menulis teks naratif—tidak pernah menghitung angka. Semua output difilter pagar aturan ketat; bila melanggar, sistem jatuh ke teks saran deterministik yang aman.',
+    icon: Waves,
+    title: 'Tinggi Muka Air',
+    desc: 'Pantau data tinggi muka air dari BPBD sebagai salah satu masukan model.',
   },
   {
-    icon: MapIcon,
-    tint: 'bg-[#FEF7E0] text-[#B06000] dark:bg-[#F9AB00]/20 dark:text-[#FDD663]',
-    title: 'Dashboard Interaktif',
-    desc: 'Peta choropleth berbasis Leaflet menampilkan warna risiko tiap kecamatan. Klik kecamatan untuk melihat peluang, prakiraan hujan, tinggi muka air, dan saran. Warga juga bisa melaporkan kondisi lapangan.',
+    icon: CloudRain,
+    title: 'Forecast Hujan',
+    desc: 'Cek prakiraan curah hujan yang bersumber dari Open-Meteo.',
+  },
+  {
+    icon: Route,
+    title: 'Rute Alternatif',
+    desc: 'Cari rute dengan risiko banjir yang lebih rendah sebelum bepergian.',
   },
 ] as const;
 
@@ -346,8 +348,8 @@ export const Landing: React.FC = () => {
             Bagaimana Pawang AI bekerja?
           </h2>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
-            Dari pengambilan data mentah hingga saran yang bisa dibaca warga—semua berjalan
-            otomatis setiap hari tanpa campur tangan manual.
+            Dari pengambilan data mentah hingga pencarian rute yang lebih aman, Pawang AI
+            membantu warga memahami risiko banjir sebelum bepergian.
           </p>
 
           <ol className="mt-16 divide-y divide-[#DADCE0] border-y border-[#DADCE0] dark:divide-[#3C4043] dark:border-[#3C4043]">
@@ -483,39 +485,56 @@ export const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* ══════════════ TENTANG ══════════════ */}
-      <section id="tentang" className="bg-[#F8F9FA] px-5 py-24 sm:px-8 md:py-32 dark:bg-[#292A2D]">
-        <div className="mx-auto max-w-6xl">
-          <span className={eyebrow}>Tentang proyek</span>
-          <h2 className="text-4xl font-semibold tracking-tight sm:text-6xl">Apa itu Pawang AI?</h2>
+                  {/* ══════════════ TENTANG ══════════════ */}
+      <section id="tentang" className="bg-[#F8F9FA] py-24 md:py-32 dark:bg-[#292A2D]">
+        <div className="mx-auto max-w-6xl px-5 sm:px-8">
 
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {ABOUT.map(a => (
-              <div
-                key={a.title}
-                className="rounded-3xl border border-[#DADCE0] bg-white p-7 dark:border-[#3C4043] dark:bg-[#202124]"
-              >
-                <div className={`mb-5 grid h-12 w-12 place-items-center rounded-2xl ${a.tint}`}>
-                  <a.icon size={24} aria-hidden />
-                </div>
-                <h3 className="text-lg font-semibold">{a.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">{a.desc}</p>
-              </div>
-            ))}
+          {/* judul (center) */}
+          <div className="text-center">
+            <span className={eyebrow}>Tentang proyek</span>
+            <h2 className="text-4xl font-semibold leading-tight tracking-tight sm:text-6xl">
+              Apa itu Pawang AI?
+            </h2>
+            <p className="mx-auto mt-5 max-w-xl text-center text-base leading-relaxed text-[#5F6368] sm:text-lg dark:text-[#9AA0A6]">
+            Pawang AI adalah software berbasis model prediksi peluang banjir per kecamatan di DKI Jakarta.
+          </p>
           </div>
 
-          <div className="mt-8 rounded-3xl border border-[#DADCE0] bg-white p-7 dark:border-[#3C4043] dark:bg-[#202124]">
-            <h3 className="mb-4 text-sm font-semibold">Stack teknologi</h3>
-            <div className="flex flex-wrap gap-2">
+          {/* kartu klarifikasi (center) */}
+          <div className="mx-auto mt-12 max-w-2xl rounded-3xl border border-[#DADCE0] bg-white p-7 text-center dark:border-[#3C4043] dark:bg-[#202124]">
+            <h3 className="text-xl font-semibold">Prediksi, bukan forecasting</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
+              Model kami hanya memprediksi peluang banjir dari model data. Kami tidak
+              membuat prakiraan cuaca sendiri. Forecast hujan diambil dari Open-Meteo
+              dan selalu pantau informasi dari BPBD, BMKG, dan media sosial terkait
+              mengenai informasi banjir yang lebih lengkap.
+            </p>
+          </div>
+
+          {/* kolom fitur (center) */}
+          <h3 className="mt-20 text-center text-xs font-semibold uppercase tracking-[0.18em] text-[#5F6368] dark:text-[#9AA0A6]">
+            Fitur
+          </h3>
+          <ul className="mt-6 grid gap-10 text-center sm:grid-cols-2 lg:grid-cols-4">
+            {FEATURES.map(f => (
+              <li key={f.title} className="flex flex-col items-center">
+                <f.icon size={24} aria-hidden className="text-[#1A73E8] dark:text-[#8AB4F8]" />
+                <h4 className="mt-4 text-lg font-semibold">{f.title}</h4>
+                <p className="mt-2 max-w-xs text-sm leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
+                  {f.desc}
+                </p>
+              </li>
+            ))}
+          </ul>
+
+          {/* stack teknologi (center) */}
+          <div className="mt-16 border-t border-[#DADCE0] pt-8 text-center dark:border-[#3C4043]">
+            <h3 className="text-sm font-semibold">Stack teknologi</h3>
+            <ul className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[#5F6368] dark:text-[#9AA0A6]">
               {STACK.map(t => (
-                <span
-                  key={t}
-                  className="rounded-full bg-[#E8F0FE] px-4 py-1.5 text-xs font-semibold text-[#1A73E8] dark:bg-[#1A73E8]/20 dark:text-[#8AB4F8]"
-                >
-                  {t}
-                </span>
+                <li key={t}>{t}</li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
       </section>
@@ -527,12 +546,8 @@ export const Landing: React.FC = () => {
             <Image src="/pawang-logo.png" alt="Logo" width={28} height={28} className="rounded-full" />
             <span className="text-sm font-semibold">Pawang AI</span>
           </div>
-          <p className="max-w-md text-xs leading-relaxed text-[#5F6368] dark:text-[#9AA0A6]">
-            Proyek prediksi banjir Jakarta — Kelompok 1, Teknik Sistem Komputer &amp; Informasi,
-            Fakultas Teknik Universitas Indonesia
-          </p>
           <p className="text-xs text-[#5F6368] dark:text-[#9AA0A6]">
-            Data prediksi bukan pengganti informasi resmi BPBD.
+            Proyek Software Engineering - Kelompok 1
           </p>
         </div>
       </footer>
