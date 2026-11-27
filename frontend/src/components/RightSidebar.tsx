@@ -461,7 +461,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                       <div className="mb-2 flex items-center justify-between">
                         <span className="flex items-center gap-1.5 text-xs font-semibold">
                           <AlertTriangle size={14} className="text-[#1A73E8] dark:text-[#8AB4F8]" />
-                          Analisa AI
+                          Hasil Model
                         </span>
                         <span
                           className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
