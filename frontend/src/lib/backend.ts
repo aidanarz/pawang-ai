@@ -25,7 +25,9 @@ export type BackendResult<T> =
 export async function fetchBackend<T>(path: string, params: URLSearchParams): Promise<BackendResult<T>> {
   // Backend in replay mode needs a target day. PAWANG_DEMO_DATE=YYYY-MM-DD supplies one when the UI sends none.
   const q = new URLSearchParams(params);
-  if (process.env.PAWANG_DEMO_DATE && !q.has('date')) q.set('date', process.env.PAWANG_DEMO_DATE);
+  if (process.env.PAWANG_DEMO_DATE && !q.has('date') && q.get('mode') !== 'live') {
+    q.set('date', process.env.PAWANG_DEMO_DATE);
+  }
   try {
     const res = await fetch(`${BACKEND_URL}${path}?${q.toString()}`, {
       cache: 'no-store',

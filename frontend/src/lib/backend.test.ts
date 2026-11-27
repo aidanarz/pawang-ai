@@ -81,6 +81,16 @@ describe('fetchBackend', () => {
     expect(url).not.toContain('2020-02-25');
   });
 
+  it('does not inject the replay demo date into live requests', async () => {
+    vi.stubEnv('PAWANG_DEMO_DATE', '2020-02-25');
+    const f = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', f);
+    await fetchBackend('/api/v1/heatmap', new URLSearchParams({ mode: 'live', time: '5h' }));
+    const url = String(f.mock.calls[0][0]);
+    expect(url).toContain('mode=live');
+    expect(url).not.toContain('date=2020-02-25');
+  });
+
   it('reports down on an unexpected status or a network error', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));

@@ -163,9 +163,17 @@ Periksa hasil berikut:
 ### Heatmap prediksi live
 
 ```powershell
-curl.exe -i "http://127.0.0.1:8000/api/v1/heatmap?time=5h"
-curl.exe -i "http://127.0.0.1:8000/api/v1/heatmap?time=1h"
-curl.exe -i "http://127.0.0.1:8000/api/v1/heatmap?time=24h"
+curl.exe -i "http://127.0.0.1:8000/api/v1/heatmap?mode=live&time=5h"
+curl.exe -i "http://127.0.0.1:8000/api/v1/heatmap?mode=live&time=1h"
+curl.exe -i "http://127.0.0.1:8000/api/v1/heatmap?mode=live&time=24h"
+```
+
+Dashboard memulai dari mode Live; mode dapat diganti tanpa restart backend. Histori memakai input arsip, bukan prakiraan
+live. Rentang tanggal yang tersedia ada di `replay_dates` pada health check. Arsip hujan saat ini berakhir pada
+2020-12-31; tanggal di luar rentang tidak menghasilkan prediksi histori.
+
+```powershell
+curl.exe -i "http://127.0.0.1:8000/api/v1/heatmap?mode=replay&date=2020-02-25"
 ```
 
 Respons berhasil harus memiliki:
@@ -181,7 +189,9 @@ Respons berhasil harus memiliki:
 Gunakan `grid_id` yang tersedia di katalog model, misalnya `menteng`:
 
 ```powershell
-curl.exe -i "http://127.0.0.1:8000/api/v1/analysis?grid_id=menteng&time=5h"
+curl.exe -i "http://127.0.0.1:8000/api/v1/analysis?mode=live&grid_id=menteng&time=5h"
+curl.exe -i "http://127.0.0.1:8000/api/v1/analysis?mode=replay&grid_id=menteng&date=2020-02-25"
+
 ```
 
 Alternatif berdasarkan koordinat:
@@ -206,8 +216,9 @@ Pastikan frontend sudah berjalan pada port `3000`.
 
 ```powershell
 curl.exe -i "http://127.0.0.1:3000/api/v1/status"
-curl.exe -i "http://127.0.0.1:3000/api/v1/heatmap?time=5h"
-curl.exe -i "http://127.0.0.1:3000/api/v1/analysis?grid_id=menteng&time=5h"
+curl.exe -i "http://127.0.0.1:3000/api/v1/heatmap?mode=live&time=5h"
+curl.exe -i "http://127.0.0.1:3000/api/v1/analysis?mode=live&grid_id=menteng&time=5h"
+curl.exe -i "http://127.0.0.1:3000/api/v1/heatmap?mode=replay&date=2020-02-25"
 ```
 
 Untuk data model, response heatmap dan analysis harus memiliki header:
@@ -241,6 +252,8 @@ cd ..
 ```powershell
 cd frontend
 npm run lint
+npm run typecheck
+npm test
 cd ..
 ```
 

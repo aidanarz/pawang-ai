@@ -6,6 +6,8 @@ export type SiagaLevel = 'Normal' | 'Siaga 4' | 'Siaga 3' | 'Siaga 2' | 'Siaga 1
 
 export type BasemapType = 'dark' | 'topographic' | 'osm';
 
+export type PredictionMode = 'live' | 'replay';
+
 export interface HydrographPoint {
   time: string;
   rainfall: number; // mm
@@ -118,10 +120,12 @@ export interface AreaAnalysisResponse {
 /** Where the data on screen came from. 'mock' = built-in demo data (backend down or empty). */
 export type DataSource = 'loading' | 'backend' | 'mock' | 'unavailable';
 
-/** GET /api/v1/status: backend reachability and archive (replay) date range. */
+/** GET /api/v1/status: backend reachability, selectable modes, and archive (replay) date range. */
 export interface BackendStatus {
   source: 'backend' | 'mock';
+  /** Backend startup mode, retained for compatibility; the dashboard selects a mode per request. */
   data_mode: 'live' | 'replay' | null;
+  available_modes: PredictionMode[];
   /** Archive days the backend can serve in replay mode (YYYY-MM-DD). */
   replay_dates: { min: string; max: string } | null;
   /** Server default day (PAWANG_DEMO_DATE) for replay mode. */

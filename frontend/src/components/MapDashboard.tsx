@@ -11,6 +11,7 @@ import {
   BackendStatus,
   DataSource,
   HeatmapGeoJSONResponse,
+  PredictionMode,
 } from '@/data/types';
 import { WATER_GATE_STATIONS, EVACUATION_CENTERS } from '@/data/floodData';
 import { DataSourceBanner } from './DataSourceBanner';
@@ -22,8 +23,8 @@ import type { RouteResponse } from '@/data/types';
 import { dominantTier } from '@/utils/areaColors';
 import { MapControls } from './MapControls';
 import { SearchModal } from './SearchModal';
-import { TopStatusPill } from './TopStatusPill';
 import { Attribution } from './Attribution';
+import { predictionModeParams } from '@/utils/predictionMode';
 
 // Dynamically import LeafletMap with SSR disabled
 const LeafletMap = dynamic(
@@ -45,6 +46,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
   const focusedInitial = useRef(false);
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
   const [timeHorizon, setTimeHorizon] = useState<TimeHorizon>('5h');
+  const [predictionMode, setPredictionMode] = useState<PredictionMode>('live');
   const [features, setFeatures] = useState<GeoJSONGridFeature[]>([]);
   const [analysis, setAnalysis] = useState<AreaAnalysisResponse | null>(null);
   // True while /api/v1/analysis is in flight. The advice is written by Qwen, which can take seconds.
@@ -68,7 +70,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [reports, setReports] = useState<LiveReport[]>([]);
-  // Alternative route. The answer is tied to the day it was computed for, so a new day or horizon hides it.
+  // Alternative route. The answer is tied to the day/mode it was computed for, so changes hide it.
   const [routeRes, setRouteRes] = useState<{ data: RouteResponse; key: string } | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
@@ -80,10 +82,11 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
 
   // Data source: 'loading' until the first heatmap answer, then 'backend' (model) or 'mock' (demo data).
   const [dataSource, setDataSource] = useState<DataSource>('loading');
+  const [predictionLoading, setPredictionLoading] = useState(true);
   const [status, setStatus] = useState<BackendStatus | null>(null);
   const [targetDate, setTargetDate] = useState<string | null>(null);
   const [unavailableMessage, setUnavailableMessage] = useState<string | null>(null);
-  // Archive day for replay mode. Null in live mode (the backend derives the day from the time horizon).
+  // Keep the selected archive day when switching back to Live.
   const [archiveDate, setArchiveDate] = useState<string | null>(null);
 
   const [layers] = useState({
@@ -128,11 +131,13 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
     });
   };
 
-  // Ask once whether the backend is up and, in replay mode, which days it can serve.
+  // Ask once whether the backend is up and which archived days it can serve.
   useEffect(() => {
     let isMounted = true;
     const loadStatus = async () => {
-      let next: BackendStatus = { source: 'mock', data_mode: null, replay_dates: null, demo_date: null };
+      let next: BackendStatus = {
+        source: 'mock', data_mode: null, available_modes: [], replay_dates: null, demo_date: null,
+      };
       try {
         const res = await fetch('/api/v1/status');
         if (res.ok) next = await res.json();
@@ -140,10 +145,8 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
         console.error('Error fetching backend status:', err);
       }
       if (!isMounted) return;
-      if (next.data_mode === 'replay' && next.replay_dates) {
-        const { min, max } = next.replay_dates;
-        const wanted = next.demo_date ?? max;
-        setArchiveDate(wanted < min ? min : wanted > max ? max : wanted);
+      if (next.available_modes.includes('replay') && next.replay_dates) {
+        setArchiveDate(next.replay_dates.max);
       }
       setStatus(next);
     };
@@ -153,14 +156,16 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
     };
   }, []);
 
-  // Fetch heatmap data when the time horizon or archive day changes (after the status is known)
+  // Fetch heatmap data when the time horizon, mode or archive day changes (after the status is known)
   useEffect(() => {
     if (!status) return;
     let isMounted = true;
     const loadHeatmap = async () => {
       try {
-        const params = new URLSearchParams({ time: timeHorizon });
-        if (archiveDate) params.set('date', archiveDate);
+        const params = new URLSearchParams({
+          time: timeHorizon,
+          ...predictionModeParams(predictionMode, archiveDate),
+        });
         const res = await fetch(`/api/v1/heatmap?${params.toString()}`);
         if (!isMounted) return;
         if (res.status === 503) {
@@ -205,23 +210,28 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
         });
       } catch (err) {
         console.error('Error fetching heatmap:', err);
+      } finally {
+        if (isMounted) setPredictionLoading(false);
       }
     };
     loadHeatmap();
     return () => {
       isMounted = false;
     };
-  }, [timeHorizon, archiveDate, status, initialGridId]);
+  }, [timeHorizon, predictionMode, archiveDate, status, initialGridId]);
 
-  // Fetch analysis data when the selected area, time horizon or archive day changes
+  // Fetch analysis data when the selected area, time horizon, mode or archive day changes
   useEffect(() => {
     if (!selectedGridId) return;
     let isMounted = true;
     const loadAnalysis = async () => {
       setAnalysisLoading(true);
       try {
-        const params = new URLSearchParams({ grid_id: selectedGridId, time: timeHorizon });
-        if (archiveDate) params.set('date', archiveDate);
+        const params = new URLSearchParams({
+          grid_id: selectedGridId,
+          time: timeHorizon,
+          ...predictionModeParams(predictionMode, archiveDate),
+        });
         const res = await fetch(`/api/v1/analysis?${params.toString()}`);
         if (!isMounted) return;
         // On failure clear it: the sidebar must not show the previous area's risk under this area's name.
@@ -236,7 +246,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
     return () => {
       isMounted = false;
     };
-  }, [selectedGridId, timeHorizon, archiveDate]);
+  }, [selectedGridId, timeHorizon, predictionMode, archiveDate]);
 
   // Live crowd reports: load now and refresh every minute (reports expire on the backend).
   const loadReports = React.useCallback(async () => {
@@ -260,6 +270,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
 
     const horizons: TimeHorizon[] = ['1h', '3h', '5h', '12h', '24h'];
     const interval = setInterval(() => {
+      setPredictionLoading(true);
       setTimeHorizon((prev) => {
         const idx = horizons.indexOf(prev);
         const nextIdx = (idx + 1) % horizons.length;
@@ -302,7 +313,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
     }
   };
 
-  const routeKey = `${timeHorizon}|${archiveDate ?? ''}`;
+  const routeKey = `${predictionMode}|${timeHorizon}|${archiveDate ?? ''}`;
   const route = routeRes && routeRes.key === routeKey ? routeRes.data : null;
   const originFeature = features.find((f) => f.properties.grid_id === selectedGridId);
   const originPosition: [number, number] | null =
@@ -320,7 +331,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
           origin: { lat: originPosition[0], lon: originPosition[1] },
           destination: { lat: routeDest.position[0], lon: routeDest.position[1] },
           time: timeHorizon,
-          ...(archiveDate ? { date: archiveDate } : {}),
+          ...predictionModeParams(predictionMode, archiveDate),
         }),
       });
       const body = await res.json().catch(() => null);
@@ -337,6 +348,34 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
     } finally {
       setRouteLoading(false);
     }
+  };
+
+  const handlePredictionModeChange = (mode: PredictionMode) => {
+    if (mode === predictionMode) return;
+    setPredictionMode(mode);
+    setPredictionLoading(true);
+    setTargetDate(null);
+    setUnavailableMessage(null);
+    setFeatures([]);
+    setAnalysis(null);
+    setRouteRes(null);
+  };
+
+  const handleArchiveDateChange = (date: string | null) => {
+    setArchiveDate(date);
+    setPredictionLoading(true);
+    setTargetDate(null);
+    setUnavailableMessage(null);
+    setFeatures([]);
+    setAnalysis(null);
+    setRouteRes(null);
+  };
+
+  const handleTimeHorizonChange = (horizon: TimeHorizon) => {
+    if (horizon === timeHorizon) return;
+    setPredictionLoading(true);
+    setTimeHorizon(horizon);
+    setRouteRes(null);
   };
 
   const highRiskCount = features.filter(
@@ -377,19 +416,20 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
         />
       </div>
 
-      {/* 2. Top status pills stay together: prediction/date beside live status */}
-      <header className="absolute top-4 left-1/2 z-30 flex max-w-[calc(100vw-8rem)] -translate-x-1/2 items-start justify-center gap-2">
+      {/* 2. Prediction controls and live status share one pill */}
+      <header className="absolute top-4 left-1/2 z-30 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-start justify-center">
         <DataSourceBanner
           source={dataSource}
           status={status}
+          mode={predictionMode}
           targetDate={targetDate}
           archiveDate={archiveDate}
           message={unavailableMessage}
-          onChangeArchiveDate={setArchiveDate}
-        />
-        <TopStatusPill
+          onChangeMode={handlePredictionModeChange}
+          onChangeArchiveDate={handleArchiveDateChange}
           highRiskCount={highRiskCount}
           backendConnected={status ? status.source === 'backend' : null}
+          predictionLoading={predictionLoading}
         />
       </header>
 
@@ -401,7 +441,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
           const gridId = selectedGridId ?? features[0]?.properties.grid_id;
           if (gridId) setReportDraft({ gridId });
         }}
-        className="absolute left-4 top-4 z-30 flex items-center gap-1.5 rounded-full border border-[#DADCE0] bg-white/95 px-3.5 py-2 text-xs font-semibold text-[#202124] shadow-md backdrop-blur-md transition hover:bg-[#F8F9FA] disabled:opacity-50 dark:border-[#3C4043] dark:bg-[#202124]/95 dark:text-[#E8EAED] dark:hover:bg-[#292A2D]"
+        className="absolute left-4 top-4 z-30 flex items-center gap-1.5 rounded-full border border-[#22396F]/30 bg-[#FFF9D2]/95 px-3.5 py-2 text-xs font-bold text-[#010736] shadow-md backdrop-blur-md transition hover:brightness-105 disabled:opacity-50 dark:border-[#22396F]/80 dark:bg-[#0D1C42]/95 dark:text-[#FCF1D0]"
         title="Laporkan kondisi jalan atau banjir saat ini"
       >
         <Flag size={13} className="text-[#1A73E8] dark:text-[#8AB4F8]" />
@@ -465,7 +505,7 @@ export const MapDashboard: React.FC<{ initialGridId?: string }> = ({ initialGrid
           features.find((f) => f.properties.grid_id === selectedGridId)?.properties.area_name ?? null
         }
         timeHorizon={timeHorizon}
-        onChangeTimeHorizon={(h) => setTimeHorizon(h)}
+        onChangeTimeHorizon={handleTimeHorizonChange}
         isSimulating={isSimulating}
         onToggleSimulation={() => setIsSimulating(!isSimulating)}
         onSelectRegionById={handleSelectGrid}

@@ -21,6 +21,7 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from typing import Literal
 
 import httpx
 from pydantic import BaseModel, Field
@@ -60,6 +61,7 @@ class RouteRequest(BaseModel):
     destination: LatLon
     time: str = "5h"
     date: str | None = None
+    mode: Literal["live", "replay"] | None = None
 
 
 class PerMinute:

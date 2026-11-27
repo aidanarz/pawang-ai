@@ -8,7 +8,9 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ detail: 'Permintaan rute tidak valid.' }, { status: 400 });
   // Replay mode needs a target day; PAWANG_DEMO_DATE supplies one when the UI sends none (same as the other routes).
-  if (process.env.PAWANG_DEMO_DATE && !body.date) body.date = process.env.PAWANG_DEMO_DATE;
+  if (process.env.PAWANG_DEMO_DATE && !body.date && body.mode !== 'live') {
+    body.date = process.env.PAWANG_DEMO_DATE;
+  }
   try {
     const res = await fetch(`${BACKEND_URL}/api/v1/route`, {
       method: 'POST',

@@ -2,6 +2,14 @@
 
 Every change (also the ones made with an AI assistant): what, which files, why. Newest first.
 
+## 2026-11-27 · Pemilihan mode Live/Histori
+- **Map mode switch:** `MapDashboard.tsx`, `DataSourceBanner.tsx`, `TopStatusPill.tsx`, `data/types.ts`,
+  `utils/predictionMode.ts` and tests. The default is Live; Histori exposes a date picker bounded by the archive
+  range. Prediction source and connection/time/risk status now share one pill.
+- **Request-level prediction modes:** `backend/app/main.py`, `backend/app/routing.py` and tests. Heatmap, analysis and
+  route requests select live or replay without restarting the server; health reports available modes and archive days.
+- **Usage docs:** `HOW TO RUN.md` documents both API modes and frontend checks.
+
 ## 2026-11-22 · Pre-deploy fixes (Coki, branch `fix/pre-deploy-2026-11-22` = `feature/alt-route` + `alt-branch`)
 - **Frontend error from "Fixing hydrochart #2" fixed:** stations without coordinates were passed to the map
   (`tsc` error, Leaflet cannot draw a marker without lat/lng). The map now skips them; the list and hydrograph keep

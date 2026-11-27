@@ -14,7 +14,7 @@ from app.agents import (AdviceFacts, AdviceWriter, DataFetchOrchestrator, Failur
 from app.areas import get_catalog
 from app.audit import AuditLog
 from app.config import Settings
-from app.main import create_app, target_date_for
+from app.main import create_app, replay_date_range, target_date_for
 from app.tools import ToolResult
 from conftest import FLOOD_DAY, FakeLLM
 
@@ -58,6 +58,48 @@ def test_no_invented_fields(replay_settings):
 def test_data_unavailable_when_no_rainfall(replay_settings):
     r = client(replay_settings).get("/api/v1/heatmap", params={"date": "2010-01-01"})
     assert r.status_code == 503 and r.json()["status"] == "data_unavailable"
+
+
+def test_live_server_exposes_archive_range_and_can_serve_replay(live_settings):
+    c = client(live_settings)
+    health = c.get("/api/v1/health").json()
+    assert health["available_modes"] == ["live", "replay"]
+    assert health["replay_dates"]["min"] <= FLOOD_DAY.isoformat() <= health["replay_dates"]["max"]
+
+    r = c.get("/api/v1/heatmap", params={"mode": "replay", "date": FLOOD_DAY.isoformat()})
+    assert r.status_code == 200
+    assert r.json()["metadata"]["target_date"] == FLOOD_DAY.isoformat()
+
+    analysis = c.get(
+        "/api/v1/analysis",
+        params={"mode": "replay", "grid_id": "menteng", "date": FLOOD_DAY.isoformat()},
+    )
+    assert analysis.status_code == 200
+    assert analysis.json()["target_date"] == FLOOD_DAY.isoformat()
+
+
+def test_replay_server_can_serve_live_mode(replay_settings):
+    http, _ = _open_meteo()
+    r = client(replay_settings, http=http).get(
+        "/api/v1/heatmap", params={"mode": "live", "time": "24h"}
+    )
+    assert r.status_code == 200
+    assert {f["properties"]["model_mode"] for f in r.json()["features"]} == {"rainfall_only"}
+
+
+def test_replay_mode_requires_a_date_for_live_server(live_settings):
+    r = client(live_settings).get("/api/v1/heatmap", params={"mode": "replay"})
+    assert r.status_code == 422
+
+
+def test_replay_date_range_uses_common_rainfall_coverage(tmp_path):
+    rain = tmp_path / "rain"
+    rain.mkdir()
+    pd.DataFrame({"date": pd.date_range("2020-01-01", "2020-01-10")}).to_csv(rain / "first.csv", index=False)
+    pd.DataFrame({"date": pd.date_range("2020-01-03", "2020-01-08")}).to_csv(rain / "second.csv", index=False)
+    settings = Settings(interim_dir=tmp_path, rain_history_days=3)
+
+    assert replay_date_range(settings) == {"min": "2020-01-05", "max": "2020-01-08"}
 
 
 def test_unknown_grid_id_404(replay_settings):
@@ -386,8 +428,10 @@ def test_health_reports_replay_date_range(replay_settings):
     assert r["min"] <= "2020-02-25" <= r["max"]
 
 
-def test_health_has_no_replay_range_in_live_mode(live_settings):
-    assert client(live_settings).get("/api/v1/health").json()["replay_dates"] is None
+def test_health_reports_replay_range_in_live_mode(live_settings):
+    health = client(live_settings).get("/api/v1/health").json()
+    assert health["available_modes"] == ["live", "replay"]
+    assert health["replay_dates"]["min"] <= FLOOD_DAY.isoformat() <= health["replay_dates"]["max"]
 
 
 # ---- audit log must never fail a request; old files are pruned ---------------------------------------

@@ -119,7 +119,7 @@ def test_exclusion_that_leaves_no_road_keeps_the_best_route_found():
 
 # ---- endpoint ---------------------------------------------------------------------------------------------------
 REQ = {"origin": {"lat": -6.2, "lon": 106.80}, "destination": {"lat": -6.2, "lon": 106.9}, "time": "5h",
-       "date": FLOOD_DAY.isoformat()}
+       "date": FLOOD_DAY.isoformat(), "mode": "replay"}
 
 
 def app_client(settings, calls=None, status=200):

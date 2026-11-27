@@ -11,6 +11,8 @@ import datetime as dt
 import logging
 import re
 from contextlib import asynccontextmanager
+from dataclasses import replace
+from typing import Literal
 
 import httpx
 import pandas as pd
@@ -49,16 +51,21 @@ def target_date_for(horizon: str, now: dt.datetime | None = None) -> dt.date:
 
 
 def replay_date_range(s: Settings) -> dict | None:
-    """First and last target day that replay mode can serve (archive start + rain_history_days - 1 .. archive end)."""
+    """Target days with a complete rainfall-history window across all archived points."""
     folder = s.interim_dir / "rain"
-    first = next(iter(sorted(folder.glob("*.csv"))), None) if folder.exists() else None
-    if first is None:
+    files = sorted(folder.glob("*.csv")) if folder.exists() else []
+    if not files:
         return None
-    dates = pd.read_csv(first, usecols=["date"], parse_dates=["date"])["date"]
-    if dates.empty:
-        return None
-    lo = dates.min().date() + dt.timedelta(days=s.rain_history_days - 1)
-    return {"min": lo.isoformat(), "max": dates.max().date().isoformat()}
+    starts, ends = [], []
+    for path in files:
+        dates = pd.read_csv(path, usecols=["date"], parse_dates=["date"])["date"].dropna()
+        if dates.empty:
+            return None
+        starts.append(dates.min().date())
+        ends.append(dates.max().date())
+    lo = max(starts) + dt.timedelta(days=s.rain_history_days - 1)
+    hi = min(ends)
+    return {"min": lo.isoformat(), "max": hi.isoformat()} if lo <= hi else None
 
 
 def create_app(settings: Settings | None = None, llm: LLM | None = None,
@@ -66,8 +73,18 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
     s = settings or get_settings()
     catalog = get_catalog(str(s.models_dir))
     llm = llm or (QwenClient(s) if s.llm_enabled else NoLLM())
-    tools = ToolRegistry(s, catalog, http=http)
+    provider_http = http if http is not None else httpx.Client(timeout=20.0)
+    tools = ToolRegistry(s, catalog, http=provider_http)
     pipeline = Pipeline(s, tools, llm, TTLCache(s.cache_ttl_s), AuditLog(s.audit_dir, audit_enabled))
+    pipelines = {s.data_mode: pipeline}
+    for mode in ("live", "replay"):
+        if mode not in pipelines:
+            mode_settings = replace(s, data_mode=mode)
+            mode_tools = ToolRegistry(mode_settings, catalog, http=provider_http)
+            pipelines[mode] = Pipeline(
+                mode_settings, mode_tools, llm, TTLCache(s.cache_ttl_s),
+                AuditLog(s.audit_dir, audit_enabled),
+            )
     advice_writer = AdviceWriter(llm)
     reports = ReportStore(s.reports_store, s.reports_ttl_h, demo_reports(catalog) if s.reports_demo else None)
     router = ValhallaClient(s.route_url, s.route_costing, http=http, timeout_s=s.route_timeout_s)
@@ -94,16 +111,20 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
             scheduler.stop()
             if s.data_mode == "live" and s.tma_live_enabled and s.tma_poll_s > 0:
                 tools.tma_live.stop_polling()
+            if http is None:
+                provider_http.close()
 
     app = FastAPI(title="Pawang AI backend", version="0.1.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
                        allow_methods=["GET", "POST"], allow_headers=["*"])
     app.state.pipeline = pipeline
+    app.state.pipelines = pipelines
     app.state.watch = watch
 
     # Optional background poller: builds the water-level history (the model needs yesterday's level) even when nobody
     # calls the API. Off by default (PAWANG_TMA_POLL_S=0); the demo script turns it on for live mode.
-    def resolve_date(time: str, date: str | None) -> dt.date:
+    def resolve_date(time: str, date: str | None, mode: str | None = None) -> dt.date:
+        selected_mode = mode or s.data_mode
         if date:
             if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
                 raise HTTPException(422, "date must be YYYY-MM-DD")
@@ -111,9 +132,13 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
                 return dt.date.fromisoformat(date)
             except ValueError:  # passes the pattern but is not a real day, e.g. 2020-02-31 (incident I-4)
                 raise HTTPException(422, f"'{date}' is not a valid calendar date") from None
-        if s.data_mode == "replay":
+        if selected_mode == "replay":
             raise HTTPException(422, "replay mode needs ?date=YYYY-MM-DD (archive data, e.g. 2020-02-25)")
         return target_date_for(time)
+
+    def get_pipeline(mode: str | None) -> tuple[str, Pipeline]:
+        selected_mode = mode or s.data_mode
+        return selected_mode, pipelines[selected_mode]
 
     def unavailable(res) -> JSONResponse:
         return JSONResponse(status_code=503, content={
@@ -128,39 +153,47 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
     def health() -> dict:
         fp = get_predictor(str(s.models_dir))
         llm_up = llm.ping() if isinstance(llm, QwenClient) else False
+        dates = replay_date_range(s)
         return {"status": "ok", "data_mode": s.data_mode, "model_unit": fp.unit,
+                "available_modes": ["live", "replay"] if dates else ["live"],
                 "model_versions": {m: fp.models[m]["meta"]["model_version"] for m in fp.modes},
                 "areas": len(catalog.all()), "tools": tools.capabilities(),
                 "llm": {"enabled": s.llm_enabled, "model": s.llm_model, "base_url": s.llm_base_url,
                         "reachable": llm_up},
                 "tma_live": tools.tma_live.status() if s.data_mode == "live" and s.tma_live_enabled else None,
                 "cache_ttl_s": s.cache_ttl_s,
-                "replay_dates": replay_date_range(s) if s.data_mode == "replay" else None}
+                "replay_dates": dates}
 
     @app.get("/api/v1/heatmap")
     def heatmap(time: str = "5h", lat: float = -6.2088, lon: float = 106.8456,
-                date: str | None = Query(None, description="Override target day (YYYY-MM-DD)")):
-        target = resolve_date(time, date)
-        res = pipeline.run(target)
+                date: str | None = Query(None, description="Override target day (YYYY-MM-DD)"),
+                mode: Literal["live", "replay"] | None = Query(None)):
+        selected_mode, selected_pipeline = get_pipeline(mode)
+        target = resolve_date(time, date, selected_mode)
+        res = selected_pipeline.run(target)
         if res.status != "ok":
             return unavailable(res)
         return H.heatmap_response(res, time, (lat, lon))
 
     @app.get("/api/v1/analysis")
     def analysis(grid_id: str | None = None, lat: float | None = None, lon: float | None = None,
-                 time: str = "5h", date: str | None = None):
+                 time: str = "5h", date: str | None = None,
+                 mode: Literal["live", "replay"] | None = Query(None)):
         if not grid_id and (lat is None or lon is None):
             raise HTTPException(422, "give grid_id, or lat and lon")
-        target = resolve_date(time, date)
+        selected_mode, selected_pipeline = get_pipeline(mode)
+        target = resolve_date(time, date, selected_mode)
         if grid_id and catalog.by_grid_id(grid_id) is None:
             raise HTTPException(404, f"unknown grid_id '{grid_id}'")
-        res = pipeline.run(target, grid_id=grid_id, lat=None if grid_id else lat, lon=None if grid_id else lon)
+        res = selected_pipeline.run(
+            target, grid_id=grid_id, lat=None if grid_id else lat, lon=None if grid_id else lon
+        )
         if res.status != "ok" or not res.areas:
             return unavailable(res)
         a = res.areas[0]
         advice = advice_writer.write(AdviceFacts(a.area.name, target, a.risk_level, a.confidence,
                                                  a.rainfall_mm, a.water_level_cm))
-        pipeline.audit.write(res.request_id, {"step": "advice", **advice.audit()})
+        selected_pipeline.audit.write(res.request_id, {"step": "advice", **advice.audit()})
         return H.analysis_response(res, a, {**advice.value, "decided_by": advice.decided_by})
 
     @app.get("/api/v1/areas")
@@ -189,16 +222,18 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
         gap = distance_m(o, d)
         if gap < MIN_METERS or gap > MAX_KM * 1000:
             raise HTTPException(422, f"origin and destination must be between {MIN_METERS:.0f} m and {MAX_KM:.0f} km apart")
-        target = resolve_date(req.time, req.date)
+        selected_mode, selected_pipeline = get_pipeline(req.mode)
+        target = resolve_date(req.time, req.date, selected_mode)
         # Citizen flood reports count in live mode only, and never the demo examples (same rule as Flood Watch).
         flood_pts = sorted((round(r["lat"], 5), round(r["lon"], 5)) for r in reports.active()
-                           if s.data_mode == "live" and not r.get("demo") and r["condition"] == "banjir")
-        key = ("route", target, round(o[0], 4), round(o[1], 4), round(d[0], 4), round(d[1], 4), tuple(flood_pts))
+                           if selected_mode == "live" and not r.get("demo") and r["condition"] == "banjir")
+        key = ("route", selected_mode, target, round(o[0], 4), round(o[1], 4),
+               round(d[0], 4), round(d[1], 4), tuple(flood_pts))
         if (hit := route_cache.get(key)) is not None:
             return hit
         if not route_limit.allow():
             raise HTTPException(429, "Terlalu banyak permintaan rute, coba lagi sebentar lagi.")
-        res = pipeline.run(target)
+        res = selected_pipeline.run(target)
         if res.status != "ok":
             return unavailable(res)
         risk = RiskMap(res.areas, flood_pts, Projector((o[0] + d[0]) / 2, (o[1] + d[1]) / 2))
@@ -212,8 +247,8 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None,
 
         # The LLM may re-word the explanation; its text is used only if it passes the checks (else the rule text).
         message, decided_by, errs = explain_route(llm, plan, s.route_llm_timeout_s)
-        pipeline.audit.write(res.request_id, {"step": "route_explain", "decided_by": decided_by,
-                                              "violations": errs, "prompt_version": ROUTE_PROMPT_VERSION})
+        selected_pipeline.audit.write(res.request_id, {"step": "route_explain", "decided_by": decided_by,
+                                                       "violations": errs, "prompt_version": ROUTE_PROMPT_VERSION})
 
         def view(r) -> dict:
             return {"coordinates": [[round(la, 5), round(lo, 5)] for la, lo in r.coords], "km": round(r.km, 1),
