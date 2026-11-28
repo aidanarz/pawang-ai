@@ -18,6 +18,7 @@ Every change (also the ones made with an AI assistant): what, which files, why. 
     sleep, Task Scheduler auto-start, Vercel `PAWANG_BACKEND_URL` update + redeploy, reboot test, and troubleshooting.
   - `docs/CLOUD_VM_PLAN.md` (new): Option B migration plan (Oracle Cloud Always Free ARM VM, LLM hosting trade-offs,
     self-hosted Valhalla in Docker, Linux systemd + HTTPS) prepared for post-presentation deployment.
+  - `docs/updates/2026-11-28-standby-backend.md` (new): team update note summarizing the standby setup, reboot test results, and fixes.
 - **Why:** Replaces manual restarts and ephemeral quick tunnels with a fixed HTTPS backend URL and automatic recovery
   after Windows reboot/logon without modifying application code (`backend/app/`, `frontend/src/`).
 
