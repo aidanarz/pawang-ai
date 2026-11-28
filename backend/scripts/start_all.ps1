@@ -39,7 +39,8 @@ param(
     [string]$NgrokDomain = "",
     [switch]$NoWatchLoop,
     [switch]$NoKeepAwake,
-    [int]$CheckIntervalSec = 30
+    [int]$CheckIntervalSec = 30,
+    [int]$TailscaleWaitSec = 300
 )
 
 $ErrorActionPreference = "Stop"
@@ -160,9 +161,15 @@ public static extern uint SetThreadExecutionState(uint esFlags);
 "@
         }
         # ES_CONTINUOUS (0x80000000) | ES_SYSTEM_REQUIRED (0x00000001)
-        [void][Pawang.PowerHelper]::SetThreadExecutionState([uint32]0x80000001)
-        $script:KeepAwakeEnabled = $true
-        Write-Log "Keep-awake enabled (ES_SYSTEM_REQUIRED) while standby supervisor is active."
+        # Use Int64 hex literals (L) so Windows PowerShell 5.1 does not parse 0x80000001 as signed Int32 (-2147483647).
+        [uint32]$keepAwakeFlags = [uint32](0x80000000L -bor 0x00000001L)
+        $prevState = [Pawang.PowerHelper]::SetThreadExecutionState($keepAwakeFlags)
+        if ($prevState -eq 0) {
+            Write-Log "SetThreadExecutionState returned 0 (could not confirm keep-awake)." "WARN"
+        } else {
+            $script:KeepAwakeEnabled = $true
+            Write-Log "Keep-awake enabled (ES_SYSTEM_REQUIRED) while standby supervisor is active."
+        }
     } catch {
         Write-Log "Could not enable keep-awake: $($_.Exception.Message)" "WARN"
     }
@@ -172,7 +179,8 @@ function Disable-KeepAwake {
     if ($script:KeepAwakeEnabled) {
         try {
             # ES_CONTINUOUS only -> clear ES_SYSTEM_REQUIRED
-            [void][Pawang.PowerHelper]::SetThreadExecutionState([uint32]0x80000000)
+            [uint32]$clearFlags = [uint32]0x80000000L
+            [void][Pawang.PowerHelper]::SetThreadExecutionState($clearFlags)
         } catch { }
     }
 }
@@ -219,15 +227,44 @@ $state = @{
 # ---------------------------------------------------------------------------
 function Get-OllamaTags {
     try {
-        return Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/tags" -TimeoutSec 3 -ErrorAction Stop
+        return Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/tags" -TimeoutSec 8 -ErrorAction Stop
     } catch {
         return $null
     }
 }
 
-function Ensure-Ollama {
+function Test-OllamaListening {
+    try {
+        $conn = Get-NetTCPConnection -LocalPort 11434 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+        return ($null -ne $conn)
+    } catch {
+        return $false
+    }
+}
+
+function Ensure-Ollama([switch]$StartupGrace) {
     $tags = Get-OllamaTags
     if ($null -eq $tags) {
+        # Give Ollama's own logon tray app / existing process a grace period before starting a second instance.
+        $existingOllama = Get-Process -Name "ollama*" -ErrorAction SilentlyContinue
+        if ($StartupGrace -or (Test-OllamaListening) -or $existingOllama) {
+            Write-Log "Waiting for existing/autostart Ollama on 127.0.0.1:11434 (grace period up to 24 s)..."
+            for ($w = 0; $w -lt 12; $w++) {
+                Start-Sleep -Seconds 2
+                $tags = Get-OllamaTags
+                if ($null -ne $tags) {
+                    Write-Log "Detected Ollama listening on 127.0.0.1:11434; reusing existing instance."
+                    break
+                }
+            }
+        }
+    }
+
+    if ($null -eq $tags) {
+        if (Test-OllamaListening) {
+            Write-Log "Port 11434 is already listening (Ollama may be busy); skipping duplicate 'ollama serve' launch." "WARN"
+            return $false
+        }
         if (-not $ollamaExe) {
             Write-Log "ollama.exe not found! Install Ollama or check PATH. Backend will fall back to rule-based policies." "WARN"
             return $false
@@ -364,31 +401,53 @@ function Test-PublicHealth([string]$BaseUrl) {
     }
 }
 
+$script:LastTailscaleWarnAt = [DateTime]::MinValue
+
 function Ensure-TailscaleFunnel([switch]$Quiet) {
     if (-not $tailscaleExe) {
-        Write-Log "tailscale.exe not found. Install Tailscale (see docs\DEPLOYMENT.md) or run with -Tunnel ngrok." "ERROR"
+        if (-not $Quiet) {
+            Write-Log "tailscale.exe not found. Install Tailscale (see docs\DEPLOYMENT.md) or run with -Tunnel ngrok." "ERROR"
+        }
         return $false
     }
 
-    # Wait up to 60 s for Tailscale to connect (especially right after Windows logon)
     $dns = $null
-    for ($i = 0; $i -lt 20; $i++) {
+    if ($Quiet) {
+        # Watchdog mode: single fast check so the 30 s loop never stalls; keeps retrying indefinitely.
         $dns = Get-TailscaleDnsName
-        if ($dns) { break }
-        if (-not $Quiet -and $i -eq 0) {
-            Write-Log "Waiting for Tailscale daemon to reach Running state..."
+        if (-not $dns) {
+            if (((Get-Date) - $script:LastTailscaleWarnAt).TotalMinutes -ge 5) {
+                Write-Log "Tailscale not in Running state yet; watchdog will keep checking every $CheckIntervalSec s." "WARN"
+                $script:LastTailscaleWarnAt = Get-Date
+            }
+            return $false
         }
-        Start-Sleep -Seconds 3
-    }
-    if (-not $dns) {
-        Write-Log "Tailscale is not logged in or not running. Open Tailscale, sign in, enable Funnel, and retry (see docs\DEPLOYMENT.md)." "ERROR"
-        return $false
+    } else {
+        # Initial startup: wait up to $TailscaleWaitSec (default 300 s = 5 min) for Tailscale to connect after boot.
+        $stepSec = 5
+        $maxTries = [Math]::Max(1, [int][Math]::Ceiling($TailscaleWaitSec / $stepSec))
+        for ($i = 0; $i -lt $maxTries; $i++) {
+            $dns = Get-TailscaleDnsName
+            if ($dns) { break }
+            if ($i -eq 0) {
+                Write-Log "Waiting for Tailscale daemon to reach Running state (up to $TailscaleWaitSec s)..."
+            } elseif (($i * $stepSec) % 30 -eq 0) {
+                Write-Log "Still waiting for Tailscale daemon ($($i * $stepSec)s / $TailscaleWaitSec s)..."
+            }
+            Start-Sleep -Seconds $stepSec
+        }
+        if (-not $dns) {
+            Write-Log "Tailscale did not reach Running state within $TailscaleWaitSec s. Watchdog will keep retrying every $CheckIntervalSec s (enable 'Run unattended' in Tailscale so it connects at boot)." "WARN"
+            $script:LastTailscaleWarnAt = Get-Date
+            return $false
+        }
     }
 
     $publicUrl = "https://$dns"
+    $prevUrl = $state["public_url"]
     $state["public_url"] = $publicUrl
 
-    # Check if funnel already maps to our port
+    # Check if funnel already maps to our port; re-run 'tailscale funnel --bg $Port' if missing.
     $statusText = (& $tailscaleExe funnel status 2>&1) -join "`n"
     $alreadyMapped = ($statusText -match "127\.0\.0\.1:$Port" -or $statusText -match "localhost:$Port") -and ($statusText -match "Funnel on")
     if (-not $alreadyMapped) {
@@ -398,6 +457,9 @@ function Ensure-TailscaleFunnel([switch]$Quiet) {
             Write-Log "tailscale funnel --bg $Port failed: $out" "ERROR"
             return $false
         }
+        Write-Log "Tailscale Funnel enabled at $publicUrl -> http://127.0.0.1:$Port"
+    } elseif ($prevUrl -ne $publicUrl) {
+        Write-Log "Tailscale Funnel already active at $publicUrl -> http://127.0.0.1:$Port"
     }
 
     Save-State $state
@@ -486,7 +548,7 @@ Save-State $state
 try {
     Enable-KeepAwake
 
-    [void](Ensure-Ollama)
+    [void](Ensure-Ollama -StartupGrace)
     $beOk = Ensure-Backend
     if (-not $beOk) {
         Write-Log "Backend failed to start. Check $uviErrLog." "ERROR"
@@ -502,12 +564,24 @@ try {
 
     Write-Log "Entering watchdog loop (checking every $CheckIntervalSec s). Run stop_all.ps1 to stop."
     $consecutiveBackendFails = 0
+    $consecutiveOllamaFails = 0
     while ($true) {
         Start-Sleep -Seconds $CheckIntervalSec
 
         if ($null -eq (Get-OllamaTags)) {
-            Write-Log "Ollama check failed; attempting restart..." "WARN"
-            [void](Ensure-Ollama)
+            $consecutiveOllamaFails++
+            if (Test-OllamaListening) {
+                if ($consecutiveOllamaFails -ge 3) {
+                    Write-Log "Ollama HTTP check timed out $consecutiveOllamaFails times, but port 11434 is still listening (likely busy); not launching a duplicate." "WARN"
+                }
+            } elseif ($consecutiveOllamaFails -ge 3) {
+                Write-Log "Ollama check failed $consecutiveOllamaFails times and port 11434 is closed; attempting restart..." "WARN"
+                if (Ensure-Ollama) {
+                    $consecutiveOllamaFails = 0
+                }
+            }
+        } else {
+            $consecutiveOllamaFails = 0
         }
 
         if ($null -eq (Get-BackendHealth)) {
