@@ -2,6 +2,25 @@
 
 Every change (also the ones made with an AI assistant): what, which files, why. Newest first.
 
+## 2026-11-28 · Always-on Windows standby scripts, Task Scheduler setup, and deployment docs
+- **Standby scripts (`backend/scripts/`):**
+  - `start_all.ps1` (new): starts and supervises Ollama (ensures `qwen3.5:4b` is pulled), FastAPI (`uvicorn`, 1 worker,
+    `PAWANG_DATA_MODE=live`, `PAWANG_WATCH_INTERVAL_S=1800`, `PAWANG_TMA_POLL_S=1800`; leaves `PAWANG_REPORTS_DEMO` at its
+    default), and a fixed-URL HTTPS tunnel (Tailscale Funnel primary, ngrok static domain backup) with health checks,
+    retries, keep-awake (`ES_SYSTEM_REQUIRED`), and 30 s crash recovery. Logs write to `backend/logs/` (git-ignored) and
+    never print secrets.
+  - `stop_all.ps1` and `status.ps1` (new): clean stop and read-only health check (supervisor, scheduled task, Ollama,
+    backend health, Tailscale Funnel public HTTPS probe, and Windows AC sleep timeout).
+  - `install_task.ps1` and `uninstall_task.ps1` (new): per-user Windows Task Scheduler registration (`PawangAI-Standby`,
+    starts 15 s after logon, unlimited run time, auto-restart on crash; no NSSM or admin privileges required).
+- **Docs (`docs/`):**
+  - `docs/DEPLOYMENT.md` (new): plain-English setup guide covering Tailscale account + Funnel, ngrok backup, preventing AC
+    sleep, Task Scheduler auto-start, Vercel `PAWANG_BACKEND_URL` update + redeploy, reboot test, and troubleshooting.
+  - `docs/CLOUD_VM_PLAN.md` (new): Option B migration plan (Oracle Cloud Always Free ARM VM, LLM hosting trade-offs,
+    self-hosted Valhalla in Docker, Linux systemd + HTTPS) prepared for post-presentation deployment.
+- **Why:** Replaces manual restarts and ephemeral quick tunnels with a fixed HTTPS backend URL and automatic recovery
+  after Windows reboot/logon without modifying application code (`backend/app/`, `frontend/src/`).
+
 ## 2026-11-28 · Route tab: searchable "Dari" and avoided-risk summary
 - `components/AreaPickerInput.tsx` (new): search box + list of the kecamatan on the map (dark mode stays dark when
   focused). `RoutePlanner.tsx`: "Dari" is now this box, so the route can start anywhere, not only at the selected area;
